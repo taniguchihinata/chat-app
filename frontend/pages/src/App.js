@@ -1,4 +1,5 @@
 import './App.css';
+//useStateは変化するデータを持つ関数
 import { useState } from 'react';
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   //登録を押したときにリクエストを送信するやつ
   const handleSignup = async () => {
     try {
-      const response = await fetch('http://localhost:8080/signup', {
+      const response = await fetch('http://localhost:8081/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -31,7 +32,7 @@ function App() {
       }
     } catch (error) {
       console.error('通信エラー:', error);
-      alert('通信エラーが発生しました');
+      alert('通信エラーが発生しました、残念');
     }
   };
 
