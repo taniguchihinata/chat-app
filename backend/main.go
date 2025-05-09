@@ -4,8 +4,12 @@ import (
     "encoding/json"
     "log"
     "net/http"
-    "golang.org/x/crypto/bcrypt" // 追加
+    "golang.org/x/crypto/bcrypt" //ハッシュ化
+    "context"//データベース追加処理
+    "github.com/jackc/pgx/v5"//データベース追加処理
 )
+
+var db *pgx.Conn
 
 type SignupRequest struct {
     Username string `json:"username"`
@@ -31,6 +35,19 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    //INSERT処理
+    _, err = db.Exec(r.Context(), `
+        INSERT INTO users (username, password_hash)
+        VALUES ($1, $2)
+    `, req.Username, string(hashedPassword))
+
+    if err != nil {
+        log.Println("INSERT失敗:",err)
+        http.Error(w, "ユーザー登録に失敗しました", http.StatusInternalServerError)
+        return
+    }
+
+
     log.Printf("登録ユーザー: %s, ハッシュ化パスワード: %s", req.Username, string(hashedPassword))
 
     w.WriteHeader(http.StatusOK)
@@ -54,6 +71,14 @@ func withCORS(handler http.Handler) http.Handler {
 }
 
 func main() {
+    ctx := context.Background()
+    var err error
+    db, err = pgx.Connect(ctx, "postgres://user:password@localhost:5432/chat_app_db")
+    if err != nil {
+        log.Fatal("DB接続失敗:", err)
+    }
+    defer db.Close(ctx)
+
     http.Handle("/signup", withCORS(http.HandlerFunc(signupHandler)))
     log.Println("サーバー起動: http://localhost:8081")
     log.Fatal(http.ListenAndServe(":8081", nil))
