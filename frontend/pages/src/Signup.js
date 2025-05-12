@@ -1,6 +1,7 @@
-import './App.css';
+//import './App.css';
 //useStateは変化するデータを持つ関数
 import { useState } from 'react';
+import './FormContainer.css';
 
 function App() {
   // 状態を定義する（データを持つ）
@@ -38,7 +39,7 @@ function App() {
 
   return (
     //画面にどう表示するかを返している
-    <div className="App">
+    <div className="form-container">
       <h1>ChatApp</h1>
       <h2>新規登録</h2>
 

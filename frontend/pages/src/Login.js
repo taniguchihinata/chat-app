@@ -1,6 +1,7 @@
-import './App.css';
+//import './App.css';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './FormContainer.css';
 
 function Login() {
   const [username, setUsername] = useState('');
@@ -28,7 +29,7 @@ function Login() {
   };
 
   return (
-    <div className="App">
+    <div className="form-container">
       <h1>ChatApp</h1>
       <h2>ログイン</h2>
       <div>

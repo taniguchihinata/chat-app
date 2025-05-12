@@ -16,6 +16,7 @@ function UserList() {
         const currentUser = localStorage.getItem('username');//現在のユーザー名
         const filtered = data.filter((user) => user.username !== currentUser);//除外
         setUsers(filtered);
+        localStorage.setItem("users", JSON.stringify(data));
       })
       .catch((err) => setError(err.message));
   }, []);
@@ -32,9 +33,12 @@ function UserList() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <ul>
         {users.map((user) => (
-          <li key={user.id}>{user.username}</li>
+          <li key={user.id} onClick={() => navigate(`/chat/${user.username}`)} style={{ cursor: 'pointer' }}>
+            {user.username}
+          </li>
         ))}
       </ul>
+
       <button onClick={handleLogout}>ログアウト</button>
     </div>
   );

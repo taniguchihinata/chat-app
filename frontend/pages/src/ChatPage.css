@@ -1,0 +1,22 @@
+.chat-page {
+  display: flex;
+  height: 100vh;
+  font-family: sans-serif;
+}
+
+/* 左側：ユーザー一覧 */
+.user-list {
+  width: 30%;
+  border-right: 1px solid #ccc;
+  padding: 10px;
+  overflow-y: auto;
+  background-color: #f8f8f8;
+}
+
+/* 右側：チャット */
+.chat-area {
+  width: 70%;
+  padding: 10px;
+  overflow-y: auto;
+}
+
