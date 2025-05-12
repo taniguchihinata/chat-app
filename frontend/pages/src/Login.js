@@ -28,7 +28,10 @@ function Login() {
       <h2>ログイン</h2>
       <div>
         <label>ユーザー名</label>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} />
+        <input 
+          value={username} 
+          onChange={(e) => setUsername(e.target.value)} 
+        />
       </div>
       
       <div>

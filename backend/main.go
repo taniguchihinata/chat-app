@@ -29,6 +29,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     // ハッシュ化
+    //bcrypt.GenerateFromPassword(...) は、パスワードを安全に暗号化（ハッシュ化）する関数
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
     if err != nil {
         http.Error(w, "パスワードのハッシュ化に失敗しました", http.StatusInternalServerError)
@@ -55,6 +56,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //CORS対応ミドルウェア
+//Webアプリで「異なるオリジン（ドメインやポート）間の通信」を許可するために、サーバー側で特定のHTTPヘッダーを追加して制御する仕組み
 func withCORS(handler http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -70,6 +72,43 @@ func withCORS(handler http.Handler) http.Handler {
     })
 }
 
+//ログイン認証
+//ここから
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "POSTメソッドのみ許可されています", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var req SignupRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "リクエストの形式が不正です", http.StatusBadRequest)
+        return
+    }
+
+    var passwordHash string
+    err := db.QueryRow(r.Context(), `
+        SELECT password_hash FROM users WHERE username = $1
+    `, req.Username).Scan(&passwordHash)
+
+    if err != nil {
+        http.Error(w, "ユーザー名またはパスワードが不正です", http.StatusUnauthorized)
+        return
+    }
+
+    // ハッシュ照合
+    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+        http.Error(w, "ユーザー名またはパスワードが不正です", http.StatusUnauthorized)
+        return
+    }
+
+    // TODO: 認証成功 → トークン発行など（今回は簡単に）
+    w.WriteHeader(http.StatusOK)
+    w.Write([]byte("ログイン成功"))
+}
+//ここまで
+
+
 func main() {
     ctx := context.Background()
     var err error
@@ -80,6 +119,8 @@ func main() {
     defer db.Close(ctx)
 
     http.Handle("/signup", withCORS(http.HandlerFunc(signupHandler)))
+    http.Handle("/login", withCORS(http.HandlerFunc(loginHandler)))
+
     log.Println("サーバー起動: http://localhost:8081")
     log.Fatal(http.ListenAndServe(":8081", nil))
 }

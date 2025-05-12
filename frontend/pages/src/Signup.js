@@ -55,7 +55,7 @@ function App() {
       <div className="form-row">
         <label>パスワード</label>
         <input 
-          type="text"
+          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -63,6 +63,8 @@ function App() {
       
       <p></p>
       <button onClick={handleSignup}>登録</button>
+      <p></p>
+      <h6>※ユーザーネームは日本語英語どちらでも大丈夫ですがパスワードは英語で入力してください</h6>
     </div>
   );
 }
