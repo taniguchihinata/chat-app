@@ -55,6 +55,38 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     w.Write([]byte("ユーザー登録成功"))
 }
 
+//データベースからUser名を取得する
+func usersHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "GETメソッドのみ許可されています", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Query(r.Context(), `SELECT id, username FROM users`)
+	if err != nil {
+		http.Error(w, "ユーザー一覧の取得に失敗しました", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()//すべて読み終えたら自動的に接続を終了
+
+	var users []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var username string
+		if err := rows.Scan(&id, &username); err != nil {
+			http.Error(w, "データの読み取りに失敗しました", http.StatusInternalServerError)
+			return
+		}
+		users = append(users, map[string]interface{}{
+			"id":       id,
+			"username": username,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
 //CORS対応ミドルウェア
 //Webアプリで「異なるオリジン（ドメインやポート）間の通信」を許可するために、サーバー側で特定のHTTPヘッダーを追加して制御する仕組み
 func withCORS(handler http.Handler) http.Handler {
@@ -120,6 +152,8 @@ func main() {
 
     http.Handle("/signup", withCORS(http.HandlerFunc(signupHandler)))
     http.Handle("/login", withCORS(http.HandlerFunc(loginHandler)))
+    http.Handle("/users", withCORS(http.HandlerFunc(usersHandler)))
+
 
     log.Println("サーバー起動: http://localhost:8081")
     log.Fatal(http.ListenAndServe(":8081", nil))

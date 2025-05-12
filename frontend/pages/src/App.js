@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import './App.css';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import Signup from './Signup';
 import Login from './Login';
-import './App.css';
+import UserList from './UserList';
 
 function App() {
-  const [mode, setMode] = useState('login');
+  const location = useLocation();
+  const hideNav = location.pathname === '/users';
 
   return (
-    <div>
-      <button onClick={() => setMode('signup')}>サインアップへ</button>
-      <button onClick={() => setMode('login')}>ログインへ</button>
+    <div className="App">
+      {!hideNav && (
+        <nav>
+          <Link to="/signup"><button>サインアップへ</button></Link>
+          <Link to="/"><button>ログインへ</button></Link>
+        </nav>
+      )}
 
-      {mode === 'signup' ? <Signup /> : <Login />}
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/users" element={<UserList />} />
+      </Routes>
     </div>
   );
 }

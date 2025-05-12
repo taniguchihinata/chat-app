@@ -1,10 +1,13 @@
 import './App.css';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     const response = await fetch('http://localhost:8081/login', {
@@ -17,6 +20,8 @@ function Login() {
 
     if (response.ok) {
       setMessage('ログイン成功！');
+      localStorage.setItem('username', username);//ログイン名を保存
+      navigate('/users');//画面遷移
     } else {
       setMessage('ログイン失敗');
     }
