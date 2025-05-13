@@ -21,7 +21,7 @@ function Chat({ roomId }) {
   };
 
   const handleSend = async () => {
-    if (text.trim() === "") return;
+    if (!text.trim()) return;//空白だけの送信を防止
     try {
       const res = await fetch("http://localhost:8081/send", {
         method: "POST",
@@ -29,7 +29,10 @@ function Chat({ roomId }) {
           "Content-Type": "application/json",
           "X-User": encodedUser,
         },
-        body: JSON.stringify({ room_id: parseInt(roomId), content: text }),
+        body: JSON.stringify({ 
+          room_id: parseInt(roomId), 
+          text: text 
+        }),
       });
       if (!res.ok) throw new Error("送信失敗");
       setText("");
@@ -47,15 +50,15 @@ function Chat({ roomId }) {
     <div>
       <h3>チャットルーム: {roomId}</h3>
       <div style={{ border: "1px solid #ccc", height: "300px", overflowY: "scroll", padding: "8px", marginBottom: "8px" }}>
-        {messages.map((msg) => (
+        {messages?.map((msg) => (
           <div
             key={msg.id}
             style={{
-              textAlign: msg.from_name === currentUser ? "right" : "left",
+              textAlign: (msg.from_name || messages.Sender) === currentUser ? "right" : "left",
               marginBottom: "4px",
             }}
           >
-            <strong>{msg.from_name}: </strong>{msg.content}
+            <strong>{msg.from_name || msg.Sender}: </strong>{msg.content}
           </div>
         ))}
       </div>
