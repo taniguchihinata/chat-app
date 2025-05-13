@@ -8,11 +8,16 @@ function Chat({ roomId }) {
   const encodedUser = btoa(unescape(encodeURIComponent(currentUser)));
 
   const fetchMessages = async () => {
+    const token = localStorage.getItem("token");
+
     try {
       const res = await fetch(`http://localhost:8081/messages?room=${roomId}`, {
-        headers: { 'X-User': encodedUser }
+        headers: { 
+          "Authorization":  `Bearer ${token}`,
+        },
       });
       if (!res.ok) throw new Error("メッセージ取得に失敗");
+
       const data = await res.json();
       setMessages(data);
     } catch (err) {
@@ -22,12 +27,15 @@ function Chat({ roomId }) {
 
   const handleSend = async () => {
     if (!text.trim()) return;//空白だけの送信を防止
+
+    const token = localStorage.getItem("token");
+
     try {
       const res = await fetch("http://localhost:8081/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User": encodedUser,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ 
           room_id: parseInt(roomId), 

@@ -2,39 +2,64 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
+
+	"backend/utils"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type LoginRequest struct {
+type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 func LoginHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POSTメソッドのみ許可されています", http.StatusMethodNotAllowed)
+		var creds Credentials
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			log.Println("JSONデコード失敗:", err)
+			http.Error(w, "無効なリクエスト", http.StatusBadRequest)
+			return
+		}
+		log.Println("ログイン試行:", creds.Username)
+
+		var hashedPassword string
+		err := db.QueryRow(context.Background(), "SELECT password_hash FROM users WHERE username=$1", creds.Username).Scan(&hashedPassword)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				log.Println("ユーザーが存在しません:", creds.Username)
+				http.Error(w, "ユーザーが存在しません", http.StatusUnauthorized)
+			} else {
+				log.Println("SQLエラー:", err)
+				http.Error(w, "サーバーエラー", http.StatusInternalServerError)
+			}
 			return
 		}
 
-		var req SignupRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "リクエストの形式が不正です", http.StatusBadRequest)
+		if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(creds.Password)); err != nil {
+			log.Println("パスワード不一致:", creds.Username)
+			http.Error(w, "パスワードが間違っています", http.StatusUnauthorized)
 			return
 		}
+		log.Println("パスワード認証成功:", creds.Username)
 
-		var passwordHash string
-		err := db.QueryRow(r.Context(), `SELECT password_hash FROM users WHERE username = $1`, req.Username).Scan(&passwordHash)
-		if err != nil || bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)) != nil {
-			http.Error(w, "ユーザー名またはパスワードが不正です", http.StatusUnauthorized)
+		token, err := utils.GenerateJWT(creds.Username)
+		if err != nil {
+			log.Println("トークン生成失敗:%+v\n", err)
+			http.Error(w, "トークン生成失敗", http.StatusInternalServerError)
 			return
 		}
+		log.Println("トークン生成成功:", token)
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ログイン成功"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"token": token,
+		})
 	}
 }
