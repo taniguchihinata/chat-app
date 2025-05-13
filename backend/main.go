@@ -1,3 +1,4 @@
+// サーバーシステム
 package main
 
 import (
@@ -20,14 +21,13 @@ func main() {
 	}
 	defer db.Close()
 
-	// DBを各ハンドラーパッケージに注入
-	handlers.DB = db
-
-	http.Handle("/signup", utils.WithCORS(http.HandlerFunc(handlers.SignupHandler)))
-	http.Handle("/login", utils.WithCORS(http.HandlerFunc(handlers.LoginHandler)))
-	http.Handle("/users", utils.WithCORS(http.HandlerFunc(handlers.UsersHandler)))
-	http.Handle("/messages", utils.WithCORS(http.HandlerFunc(handlers.MessagesHandler)))
-	http.Handle("/send", utils.WithCORS(http.HandlerFunc(handlers.SendMessageHandler)))
+	//withCORSの中に書いてある関数が動いている感じ
+	http.Handle("/signup", utils.WithCORS(handlers.SignupHandler(db)))
+	http.Handle("/login", utils.WithCORS(handlers.LoginHandler(db)))
+	http.Handle("/users", utils.WithCORS(handlers.UsersHandler(db)))
+	http.Handle("/messages", utils.WithCORS(handlers.GetMessagesHandler(db))) // GET
+	http.Handle("/send", utils.WithCORS(handlers.SendMessageHandler(db)))     // POST
+	http.Handle("/rooms", utils.WithCORS(handlers.GetOrCreateRoomHandler(db)))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
