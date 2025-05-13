@@ -28,6 +28,7 @@ func main() {
 	http.Handle("/messages", utils.WithCORS(handlers.GetMessagesHandler(db))) // GET
 	http.Handle("/send", utils.WithCORS(handlers.SendMessageHandler(db)))     // POST
 	http.Handle("/rooms", utils.WithCORS(handlers.GetOrCreateRoomHandler(db)))
+	mux.HandleFunc("/me", utils.WithCORS(handlers.MeHandler))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

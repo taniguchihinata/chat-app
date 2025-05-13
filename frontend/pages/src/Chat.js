@@ -42,7 +42,9 @@ function Chat({ roomId }) {
           text: text 
         }),
       });
+
       if (!res.ok) throw new Error("送信失敗");
+
       setText("");
       fetchMessages();
     } catch (err) {
@@ -62,11 +64,11 @@ function Chat({ roomId }) {
           <div
             key={msg.id}
             style={{
-              textAlign: (msg.from_name || messages.Sender) === currentUser ? "right" : "left",
+              textAlign: msg.username === currentUser ? "right" : "left",
               marginBottom: "4px",
             }}
           >
-            <strong>{msg.from_name || msg.Sender}: </strong>{msg.content}
+            <strong>{msg.username}: </strong>{msg.text}
           </div>
         ))}
       </div>
