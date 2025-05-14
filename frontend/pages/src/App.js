@@ -1,9 +1,11 @@
-import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from "react";
-import Signup from './Signup';
-import Login from './Login';
-import UserList from './UserList';
-import ChatPage from './ChatPage';
+import React, { useEffect, useState } from "react";
+import { Routes, Route, useLocation, useNavigate, Link } from "react-router-dom";
+
+import Login from "./Login";
+import Signup from "./Signup";
+import UserList from "./UserList";
+import ChatPage from "./ChatPage";
+import RequireAuth from "./RequireAuth";
 
 function App() {
   const location = useLocation();
@@ -35,38 +37,55 @@ function App() {
         console.error("JWTからユーザー取得失敗:", err);
         sessionStorage.removeItem("token");
         setUsername(null);
-        navigate("/"); // トークン無効ならログイン画面へ
+        navigate("/");
       });
   }, [navigate]);
 
+  const handleLogout = () => {
+    sessionStorage.removeItem("token");
+    setUsername(null);
+    navigate("/");
+  };
+
   return (
     <div className="App">
-      {showNav && (
+      {showNav ? (
         <nav>
           <Link to="/signup"><button>サインアップへ</button></Link>
           <Link to="/"><button>ログインへ</button></Link>
         </nav>
-      )}
-
-      {!showNav && username && (
-        <nav>
-          <span>ログイン中: {username}</span>
-          <button onClick={() => {
-            sessionStorage.removeItem("token");
-            setUsername(null);
-            navigate("/");
-          }}>ログアウト</button>
-        </nav>
+      ) : (
+        username && (
+          <nav>
+            <span>ログイン中: {username}</span>
+            <button onClick={handleLogout}>ログアウト</button>
+          </nav>
+        )
       )}
 
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/users" element={<UserList username={username} />} />
-        <Route path="/chat/:roomId" element={<ChatPage username={username} />} />
+        <Route
+          path="/users"
+          element={
+            <RequireAuth>
+              <UserList username={username} />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/chat/:roomId"
+          element={
+            <RequireAuth>
+              <ChatPage username={username} />
+            </RequireAuth>
+          }
+        />
       </Routes>
     </div>
   );
 }
 
 export default App;
+
