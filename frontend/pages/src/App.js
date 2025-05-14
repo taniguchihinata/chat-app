@@ -13,7 +13,7 @@ function App() {
   const showNav = location.pathname === '/' || location.pathname === '/signup';
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     if (!token) {
       setUsername(null);
       return;
@@ -33,7 +33,7 @@ function App() {
       })
       .catch((err) => {
         console.error("JWTからユーザー取得失敗:", err);
-        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
         setUsername(null);
         navigate("/"); // トークン無効ならログイン画面へ
       });
@@ -52,7 +52,7 @@ function App() {
         <nav>
           <span>ログイン中: {username}</span>
           <button onClick={() => {
-            localStorage.removeItem("token");
+            sessionStorage.removeItem("token");
             setUsername(null);
             navigate("/");
           }}>ログアウト</button>

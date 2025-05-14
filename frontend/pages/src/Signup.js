@@ -1,6 +1,7 @@
 //import './App.css';
 //useStateは変化するデータを持つ関数
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './FormContainer.css';
 
 function App() {
@@ -10,6 +11,9 @@ function App() {
   //入力された内容をReactで保持するやつ
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState(''); 
+  const [message, setMessage] = useState('');
+
+  const navigate = useNavigate();
 
   //登録を押したときにリクエストを送信するやつ
   const handleSignup = async () => {
@@ -27,9 +31,10 @@ function App() {
 
       if (response.ok) {
         alert('登録成功！');
+        navigate('/');
       } else {
         const err = await response.text();
-        alert(`登録失敗: ${err}`);
+        setMessage(`登録失敗: ${err}`);
       }
     } catch (error) {
       console.error('通信エラー:', error);
@@ -66,6 +71,7 @@ function App() {
       <button onClick={handleSignup}>登録</button>
       <p></p>
       <h6>※ユーザーネームは日本語英語どちらでも大丈夫ですがパスワードは英語で入力してください</h6>
+      <p>{message}</p>
     </div>
   );
 }

@@ -1,24 +1,22 @@
-// このファイルでユーザーリストとチャットページを同時に表示している
 import { useParams } from 'react-router-dom';
 import UserList from './UserList';
 import Chat from './Chat';
-import './ChatPage.css'; // 任意のスタイルファイル
+import './ChatPage.css';
 
-
-
-function ChatPage() {
+function ChatPage({ username }) {
   const { roomId } = useParams();
 
   return (
     <div className="chat-page">
       <div className="user-list">
-        <UserList />
+        <UserList username={username} />
       </div>
       <div className="chat-area">
-        <Chat roomId={roomId} />
+        <Chat roomId={roomId} username={username} />
       </div>
     </div>
   );
 }
 
 export default ChatPage;
+// このファイルでユーザーリストとチャットページを同時に表示している

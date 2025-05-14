@@ -26,8 +26,8 @@ function Login() {
       }
 
       const responseData = await response.json(); // 🔧 変数名を重複させない
-      localStorage.setItem('token', responseData.token); // JWT保存
-      localStorage.setItem('username', username);        // ユーザー名も保存
+      sessionStorage.setItem('token', responseData.token); // JWT保存
+      sessionStorage.setItem('username', username);        // ユーザー名も保存
 
       setMessage('ログイン成功！');
       navigate('/users');

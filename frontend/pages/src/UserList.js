@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function UserList() {
+function UserList({ username }) {
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
 
@@ -9,17 +9,13 @@ function UserList() {
     fetch("http://localhost:8081/users")
       .then((res) => res.json())
       .then((data) => {
-        const currentUser = localStorage.getItem("username");
-        const filtered = data.filter(
-          (user) => user.username !== currentUser
-        );
+        const filtered = data.filter((user) => user.username !== username);
         setUsers(filtered);
       });
-  }, []);
+  }, [username]);
 
   const handleClick = async (partnerUsername) => {
-    const currentUser = localStorage.getItem("username");
-    const encodedUser = btoa(unescape(encodeURIComponent(currentUser)));
+    const encodedUser = btoa(unescape(encodeURIComponent(username)));
 
     try {
       const res = await fetch("http://localhost:8081/rooms", {
@@ -40,10 +36,6 @@ function UserList() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("username");
-    navigate("/");
-  };
 
   return (
     <div style={{ padding: "1rem" }}>
@@ -66,9 +58,6 @@ function UserList() {
           </li>
         ))}
       </ul>
-      <button onClick={handleLogout} style={{ marginBottom: "1rem" }}>
-        ログアウト
-      </button>
     </div>
   );
 }
