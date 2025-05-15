@@ -1,8 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+
+  const bottomRef = useRef(null);
+
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" ,block: "end"});
+  };
+
 
   const fetchMessages = async () => {
     const token = sessionStorage.getItem("token");
@@ -17,6 +24,7 @@ function Chat({ roomId, username }) {
 
       const data = await res.json();
       setMessages(data);
+      scrollToBottom();
     } catch (err) {
       console.error("メッセージ取得エラー:", err);
     }
@@ -51,20 +59,16 @@ function Chat({ roomId, username }) {
 
   useEffect(() => {
     fetchMessages();
+    scrollToBottom();
   }, [roomId]);
 
   return (
-    <div>
-      <h3>チャットルーム: {roomId}</h3>
-      <div
-        style={{
-          border: "1px solid #ccc",
-          height: "300px",
-          overflowY: "scroll",
-          padding: "8px",
-          marginBottom: "8px",
-        }}
-      >
+    <div className="chat-container">
+      <div className="chat-header">
+        <h3>チャットルーム: {roomId}</h3>
+      </div>
+
+      <div className="chat-messages">
         {messages?.map((msg) => (
           <div
             key={msg.id}
@@ -77,14 +81,33 @@ function Chat({ roomId, username }) {
             {msg.text}
           </div>
         ))}
+        <div ref={bottomRef} style={{ height: "32px" }} />
       </div>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        style={{ width: "80%", marginRight: "8px" }}
-      />
-      <button onClick={handleSend}>送信</button>
+
+      <div className="chat-input">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              if (e.shiftKey) return; // 改行を許可
+              e.preventDefault();     // 通常送信
+              handleSend();
+            }
+          }}
+          rows={3}
+          style={{ 
+            width: "80%",
+            marginRight: "8px",
+            resize: "none",
+            lineHeight: "1.4em",
+            padding: "10px",
+            boxSizing: "border-box",
+            
+          }}
+        />
+        <button onClick={handleSend}>送信</button>
+      </div>
     </div>
   );
 }

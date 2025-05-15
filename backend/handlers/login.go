@@ -51,7 +51,7 @@ func LoginHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 		token, err := utils.GenerateJWT(creds.Username)
 		if err != nil {
-			log.Println("トークン生成失敗:%+v\n", err)
+			log.Printf("トークン生成失敗:%+v\n", err)
 			http.Error(w, "トークン生成失敗", http.StatusInternalServerError)
 			return
 		}

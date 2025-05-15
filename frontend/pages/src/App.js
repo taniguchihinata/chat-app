@@ -1,3 +1,6 @@
+//フロントエンドの機能の管理をしている
+
+//必要なものをインポートしている
 import React, { useEffect, useState } from "react";
 import { Routes, Route, useLocation, useNavigate, Link } from "react-router-dom";
 
@@ -49,40 +52,44 @@ function App() {
 
   return (
     <div className="App">
-      {showNav ? (
-        <nav>
-          <Link to="/signup"><button>サインアップへ</button></Link>
-          <Link to="/"><button>ログインへ</button></Link>
-        </nav>
-      ) : (
-        username && (
-          <nav>
-            <span>ログイン中: {username}</span>
-            <button onClick={handleLogout}>ログアウト</button>
-          </nav>
-        )
-      )}
+      <nav>
+        {showNav ? (
+          <>
+            <Link to="/signup"><button>サインアップへ</button></Link>
+            <Link to="/"><button>ログインへ</button></Link>
+          </>
+        ) : (
+          username && (
+            <>
+              <span>ログイン中: {username}</span>
+              <button onClick={handleLogout}>ログアウト</button>
+            </>
+          )
+        )}
+      </nav>
 
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route
-          path="/users"
-          element={
-            <RequireAuth>
-              <UserList username={username} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/chat/:roomId"
-          element={
-            <RequireAuth>
-              <ChatPage username={username} />
-            </RequireAuth>
-          }
-        />
-      </Routes>
+      <div className="main-content">
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/users"
+            element={
+              <RequireAuth>
+                <UserList username={username} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat/:roomId"
+            element={
+              <RequireAuth>
+                <ChatPage username={username} />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      </div>
     </div>
   );
 }
