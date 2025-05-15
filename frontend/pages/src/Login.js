@@ -10,6 +10,7 @@ function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
+    if (!username.trimStart() || !password.trim()) return;
     try {
       const response = await fetch('http://localhost:8081/login', {
         method: 'POST',

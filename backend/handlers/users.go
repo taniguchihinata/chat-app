@@ -1,3 +1,4 @@
+// ユーザー取得のバックエンド処理
 package handlers
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// 関数定義
 func UsersHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -14,6 +16,7 @@ func UsersHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		//データベースからユーザー一覧を取得
 		rows, err := db.Query(r.Context(), `SELECT id, username FROM users`)
 		if err != nil {
 			http.Error(w, "ユーザー一覧の取得に失敗しました", http.StatusInternalServerError)
@@ -21,6 +24,8 @@ func UsersHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 		defer rows.Close()
 
+		//データをスライスに格納
+		//スライスは柔軟な配列のようなデータ構造、長さが可変
 		var users []map[string]interface{}
 		for rows.Next() {
 			var id int
@@ -35,6 +40,7 @@ func UsersHandler(db *pgxpool.Pool) http.HandlerFunc {
 			})
 		}
 
+		//レスポンスの送信
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(users)
 	}

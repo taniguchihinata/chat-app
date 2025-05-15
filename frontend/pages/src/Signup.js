@@ -17,6 +17,8 @@ function App() {
 
   //登録を押したときにリクエストを送信するやつ
   const handleSignup = async () => {
+    if (!username.trim() || !password.trim()) return;
+
     try {
       const response = await fetch('http://localhost:8081/signup', {
         method: 'POST',

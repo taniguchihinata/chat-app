@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
@@ -6,12 +6,13 @@ function Chat({ roomId, username }) {
 
   const bottomRef = useRef(null);
 
-  const scrollToBottom = () => {
+  //画面スクロール
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" ,block: "end"});
-  };
+  }, []);
 
-
-  const fetchMessages = async () => {
+  //メッセージ取得
+  const fetchMessages = useCallback(async () => {
     const token = sessionStorage.getItem("token");
 
     try {
@@ -28,8 +29,9 @@ function Chat({ roomId, username }) {
     } catch (err) {
       console.error("メッセージ取得エラー:", err);
     }
-  };
+  },[roomId, scrollToBottom]);
 
+  //メッセージ送信
   const handleSend = async () => {
     if (!text.trim()) return;
 
@@ -57,11 +59,13 @@ function Chat({ roomId, username }) {
     }
   };
 
+  //初回レンダリング時の処理
   useEffect(() => {
     fetchMessages();
-    scrollToBottom();
-  }, [roomId]);
+    //scrollToBottom();
+  }, [fetchMessages]);
 
+  //UI
   return (
     <div className="chat-container">
       <div className="chat-header">
