@@ -3,12 +3,12 @@ package handlers
 
 import (
 	"context"      //タイムアウトやキャンセル制御
-	"database/sql" //SPLエラーで使用
+	"database/sql" //SQLエラーで使用
 	"encoding/json"
 	"log"
 	"net/http"
 
-	"backend/utils" //JWT生成などのユーティティ関数を利用
+	"backend/utils" //JWT生成などのユーティリティ関数を利用(GenarateJWTとか)
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
