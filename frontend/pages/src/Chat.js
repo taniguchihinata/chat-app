@@ -1,15 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
 
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
   const bottomRef = useRef(null);
-
-  //画面スクロール
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" ,block: "end"});
-  }, []);
 
   //メッセージ取得
   const fetchMessages = useCallback(async () => {
@@ -25,11 +20,10 @@ function Chat({ roomId, username }) {
 
       const data = await res.json();
       setMessages(data);
-      scrollToBottom();
     } catch (err) {
       console.error("メッセージ取得エラー:", err);
     }
-  },[roomId, scrollToBottom]);
+  },[roomId]);
 
   //メッセージ送信
   const handleSend = async () => {
@@ -62,8 +56,13 @@ function Chat({ roomId, username }) {
   //初回レンダリング時の処理
   useEffect(() => {
     fetchMessages();
-    //scrollToBottom();
   }, [fetchMessages]);
+
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    });
+  }, [messages]);
 
   //UI
   return (
@@ -72,10 +71,10 @@ function Chat({ roomId, username }) {
         <h3>チャットルーム: {roomId}</h3>
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" style={{ overflowY: "auto", maxHeight: "60vh", padding: "0 10px" }}>
         {messages?.map((msg) => (
           <div
-            key={msg.id}
+            key={msg.id} 
             style={{
               textAlign: msg.username === username ? "right" : "left",
               marginBottom: "4px",
@@ -85,10 +84,10 @@ function Chat({ roomId, username }) {
             {msg.text}
           </div>
         ))}
-        <div ref={bottomRef} style={{ height: "32px" }} />
+        <div ref={bottomRef} style={{ height: "0" ,margin: 0, padding: 0}} />
       </div>
 
-      <div className="chat-input">
+      <div className="chat-input" style={{ marginTop: "10px"}}>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
