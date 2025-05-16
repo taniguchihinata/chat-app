@@ -2,10 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+//
 function UserList({ username }) {
+  //表示するユーザーリストを格納
   const [users, setUsers] = useState([]);
+
   const navigate = useNavigate();
 
+  //ユーザーリスト一覧を取得
   useEffect(() => {
     fetch("http://localhost:8081/users")
       .then((res) => res.json())
@@ -15,10 +19,13 @@ function UserList({ username }) {
       });
   }, [username]);
 
+  //チャットルーム作成のハンドラ
   const handleClick = async (partnerUsername) => {
+    //日本語でも使えるようにBase64でエンコード
     const encodedUser = btoa(unescape(encodeURIComponent(username)));
 
     try {
+      //チャットルーム作成のAPIの呼び出し
       const res = await fetch("http://localhost:8081/rooms", {
         method: "POST",
         headers: {
@@ -37,7 +44,7 @@ function UserList({ username }) {
     }
   };
 
-
+  //ユーザー一覧取得
   return (
     <div style={{ padding: "1rem" }}>
       <h2>ユーザー一覧</h2>

@@ -28,9 +28,10 @@ type SendMessageRequest struct {
 	Text   string `json:"text"`
 }
 
-// メッセージの取得関数
+// メッセージの取得ハンドラー
 func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//認証チェック
 		username, err := utils.ParseJWTFromRequest(r)
 		if err != nil {
 			log.Println("JWT検証失敗:", err)
@@ -39,6 +40,7 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 		log.Println("メッセージ取得ユーザー:", username)
 
+		//クエリパラメータの取得と変換
 		roomIDStr := r.URL.Query().Get("room")
 		roomID, err := strconv.Atoi(roomIDStr)
 		if err != nil {
@@ -46,6 +48,7 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		//データベースクエリと整形
 		rows, err := db.Query(
 			context.Background(),
 			`SELECT m.id, m.sender_id, u.username, m.text, m.created_at
@@ -61,6 +64,7 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 		defer rows.Close()
 
+		//メッセージを取得
 		var messages []Message
 		for rows.Next() {
 			var msg Message
@@ -70,6 +74,7 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 				log.Println("行スキャン失敗:", err)
 				continue
 			}
+			//レスポンス整形と返却
 			msg.CreatedAt = createdAt.Format(time.RFC3339)
 			messages = append(messages, msg)
 		}
@@ -79,9 +84,10 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// メッセージの送信関数
+// メッセージの送信ハンドラー
 func SendMessageHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		//JWT認証
 		username, err := utils.ParseJWTFromRequest(r)
 		if err != nil {
 			log.Println("JWT検証失敗:", err)
@@ -90,6 +96,7 @@ func SendMessageHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 		log.Println("送信者（JWT）:", username)
 
+		//リクエストボディの読み取り
 		var req SendMessageRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			log.Println("リクエストデコード失敗:", err)
@@ -97,6 +104,7 @@ func SendMessageHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		//ユーザーIDの取得
 		var senderID int
 		err = db.QueryRow(context.Background(), "SELECT id FROM users WHERE username=$1", username).Scan(&senderID)
 		if err != nil {
@@ -107,6 +115,7 @@ func SendMessageHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 		_, err = db.Exec(
 			context.Background(),
+			//メッセージ挿入
 			"INSERT INTO messages (room_id, sender_id, text, created_at) VALUES ($1, $2, $3, $4)",
 			req.RoomID, senderID, req.Text, time.Now(),
 		)
@@ -116,6 +125,7 @@ func SendMessageHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
+		//レスポンスを返す
 		w.WriteHeader(http.StatusCreated)
 	}
 }
