@@ -8,7 +8,7 @@ function Chat({ roomId, username }) {
 
   //メッセージ取得
   const fetchMessages = useCallback(async () => {
-    const token = sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     try {
       const res = await fetch(`http://localhost:8081/messages?room=${roomId}`, {
@@ -29,7 +29,7 @@ function Chat({ roomId, username }) {
   const handleSend = async () => {
     if (!text.trim()) return;
 
-    const token = sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
     try {
       const res = await fetch("http://localhost:8081/send", {
