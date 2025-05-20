@@ -1,67 +1,58 @@
-import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from "react";
+import React, { useEffect, useRef, useState, } from "react";
 
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
 
+  const socketRef = useRef(null)
   const bottomRef = useRef(null);
 
-  //メッセージ取得
-  const fetchMessages = useCallback(async () => {
+  //WebSocket接続とメッセージ受信
+  useEffect(() => {
     const token = localStorage.getItem("token");
+    const ws = new WebSocket(`ws://localhost:8081/ws?token=${token}`);
+    socketRef.current = ws;
 
-    try {
-      const res = await fetch(`http://localhost:8081/messages?room=${roomId}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error("メッセージ取得に失敗");
+    ws.onopen = () => {
+      // 初期メッセージでルームID送信
+      ws.send(JSON.stringify({
+        room_id: parseInt(roomId),
+      }));
+    };
 
-      const data = await res.json();
-      setMessages(data);
-    } catch (err) {
-      console.error("メッセージ取得エラー:", err);
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      setMessages((prev) => [...prev, msg]);
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocketエラー:", err);
     }
-  },[roomId]);
+
+    ws.onclose = () => {
+      console.log("WebSocket切断");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [roomId]);
 
   //メッセージ送信
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!text.trim()) return;
 
-    const token = localStorage.getItem("token");
+    socketRef.current?.send(JSON.stringify({
+      room_id: parseInt(roomId),
+      text: text.trim(),
+    }));
 
-    try {
-      const res = await fetch("http://localhost:8081/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          room_id: parseInt(roomId),
-          text: text,
-        }),
-      });
-
-      if (!res.ok) throw new Error("送信失敗");
-
-      setText("");
-      fetchMessages();
-    } catch (err) {
-      console.error("送信エラー:", err);
-    }
+    setText("");
   };
 
   //初回レンダリング時の処理
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
-
-  useLayoutEffect(() => {
-    requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-    });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end"});
   }, [messages]);
 
   //UI

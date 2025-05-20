@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"backend/utils"
 	"context"
 	"log"
 	"net/http"
@@ -12,9 +13,10 @@ import (
 
 // WebSocketで使用する構造体
 type WSMessage struct {
-	RoomID int    `json:"room_id"`
-	Text   string `json:"text"`
-	Sender int    `json:"sender_id"`
+	RoomID   int    `json:"room_id"`
+	Text     string `json:"text"`
+	Sender   int    `json:"sender_id"`
+	Username string `json:"username"`
 }
 
 type Client struct {
@@ -33,6 +35,20 @@ var (
 
 func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		tokenStr := r.URL.Query().Get("token")
+		if tokenStr == "" {
+			http.Error(w, "トークンが指定されていません", http.StatusUnauthorized)
+			return
+		}
+
+		username, err := utils.ParseJWT(tokenStr)
+		if err != nil {
+			http.Error(w, "トークンが無効です", http.StatusUnauthorized)
+			return
+		}
+		log.Printf("WebSocket認証成功: %s", username)
+
+		//WebSocket接続開始
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("WebSocketアップグレード失敗:", err)
@@ -65,17 +81,29 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 			log.Printf("ルーム%d: %s", msg.RoomID, msg.Text)
 
+			var senderID int
+			err := db.QueryRow(context.Background(),
+				"SELECT id FROM users WHERE username = $1", username,
+			).Scan(&senderID)
+			if err != nil {
+				log.Println("sender_id取得失敗:", err)
+				continue
+			}
+
 			// メッセージをデータベースに保存
-			_, err := db.Exec(context.Background(),
+			_, err = db.Exec(context.Background(),
 				`INSERT INTO messages (room_id, sender_id, text, created_at)
 				 VALUES ($1, $2, $3, now())`,
-				msg.RoomID, msg.Sender, msg.Text,
+				msg.RoomID, senderID, msg.Text,
 			)
 			if err != nil {
 				log.Println("メッセージ保存失敗:", err)
+				continue
 			}
 
 			// ブロードキャスト（同じルームの全クライアントに送信）
+			msg.Username = username
+
 			mu.Lock()
 			for _, c := range roomClients[msg.RoomID] {
 				if err := c.Conn.WriteJSON(msg); err != nil {
