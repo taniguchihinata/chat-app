@@ -21,7 +21,7 @@ function App() {
 
   //ログイン状態チェック
   useEffect(() => {
-    const token = sessionStorage.getItem("token");//セッションからJWTトークンを取得
+    const token = localStorage.getItem("token");//セッションからJWTトークンを取得
     if (!token) {//トークンがなかったらusernameをnullにする
       setUsername(null);
       return;
@@ -41,7 +41,7 @@ function App() {
       })
       .catch((err) => {
         console.error("JWTからユーザー取得失敗:", err);
-        sessionStorage.removeItem("token");
+        localStorage.removeItem("token");
         setUsername(null);
         navigate("/");
       });
@@ -50,7 +50,7 @@ function App() {
   //ログアウト処理
   //トークンを削除してログイン画面に戻る
   const handleLogout = () => {
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
     setUsername(null);
     navigate("/");
   };
