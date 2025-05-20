@@ -28,7 +28,7 @@ func main() {
 	http.Handle("/users", utils.WithCORS(handlers.UsersHandler(db)))
 	http.Handle("/messages", utils.WithCORS(handlers.GetMessagesHandler(db))) // GET
 	http.Handle("/send", utils.WithCORS(handlers.SendMessageHandler(db)))     // POST
-	http.Handle("/rooms", utils.WithCORS(handlers.GetOrCreateRoomHandler(db)))
+	http.Handle("/rooms", utils.WithCORS(handlers.RoomsHandler(db)))
 	http.HandleFunc("/me", utils.WithCORS(handlers.MeHandler))
 	http.HandleFunc("/logout", utils.WithCORS(handlers.LogoutHandler))
 	http.HandleFunc("/ws", handlers.WebSocketHandler(db))

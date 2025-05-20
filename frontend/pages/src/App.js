@@ -97,6 +97,14 @@ function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="/groups/create"
+            element={
+              <RequireAuth>
+                <CreateGroup />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </div>
     </div>

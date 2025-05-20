@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 
 function UserList() {
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const navigate = useNavigate();
-
+  
+  const myUsername = localStorage.getItem("username");
+  
   // ユーザーリスト一覧を取得
   useEffect(() => {
     const fetchUsers = async () => {
-      const myUsername = localStorage.getItem("username");
-
       const res = await fetch("http://localhost:8081/users");
       const data = await res.json();
 
@@ -19,6 +20,20 @@ function UserList() {
     };
 
     fetchUsers();
+  }, [myUsername]);
+
+  // グループ一覧を取得
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch("http://localhost:8081/rooms?type=group", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setGroups(data);
+    };
+
+    fetchGroups();
   }, []);
 
   // チャットルーム作成のハンドラ
@@ -76,6 +91,24 @@ function UserList() {
         新規グループ作成
         </button>
       </h2>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {groups.map((group) => (
+          <li
+            key={group.room_id}
+            onClick={() => navigate(`/chat/${group.room_id}`)}
+            style={{
+              cursor: "pointer",
+              padding: "8px 12px",
+              borderBottom: "1px solid #ccc",
+              backgroundColor: "#eef1f5",
+              marginBottom: "4px",
+              borderRadius: "4px",
+            }}
+          >
+            {group.room_name || "(名前なしのグループ)"}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

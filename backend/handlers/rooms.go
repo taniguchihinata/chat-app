@@ -112,3 +112,65 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 		json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})
 	}
 }
+
+// GET グループ一覧取得
+func GetGroupRoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username, err := utils.ParseJWTFromRequest(r)
+		if err != nil {
+			http.Error(w, "認証エラー", http.StatusUnauthorized)
+			return
+		}
+
+		var userID int
+		err = db.QueryRow(context.Background(),
+			`SELECT id FROM users WHERE username = $1`, username).Scan(&userID)
+		if err != nil {
+			http.Error(w, "ユーザー情報取得失敗", http.StatusInternalServerError)
+			return
+		}
+
+		rows, err := db.Query(context.Background(), `
+			SELECT cr.id, cr.room_name
+			FROM chat_rooms cr
+			JOIN room_members rm ON cr.id = rm.room_id
+			WHERE cr.is_group = true AND rm.user_id = $1
+		`, userID)
+		if err != nil {
+			http.Error(w, "DB取得失敗", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		type GroupInfo struct {
+			RoomID   int    `json:"room_id"`
+			RoomName string `json:"room_name"`
+		}
+
+		var groups []GroupInfo
+		for rows.Next() {
+			var g GroupInfo
+			if err := rows.Scan(&g.RoomID, &g.RoomName); err == nil {
+				groups = append(groups, g)
+			}
+		}
+
+		json.NewEncoder(w).Encode(groups)
+	}
+}
+
+// GETとPOSTを分けて処理する統合ハンドラー
+func RoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			GetOrCreateRoomHandler(db)(w, r)
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Query().Get("type") == "group" {
+			GetGroupRoomsHandler(db)(w, r)
+			return
+		}
+
+		http.Error(w, "不正なリクエスト形式", http.StatusBadRequest)
+	}
+}
