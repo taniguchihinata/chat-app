@@ -67,6 +67,15 @@ function UserList() {
           </li>
         ))}
       </ul>
+      <h2 style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        グループ一覧
+        <button
+          onClick={() => navigate("/groups/create")}
+          style={{ fontSize: "0.8rem", padding: "4px 8px", marginLeft: "12px" }}
+        >
+        新規グループ作成
+        </button>
+      </h2>
     </div>
   );
 }

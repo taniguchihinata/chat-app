@@ -1,23 +1,28 @@
 package handlers
 
 import (
-	"backend/utils"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
+	"sort"
 
-	"github.com/jackc/pgx/v5"
+	"backend/utils"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RoomRequest struct {
-	Members []string `json:"members"` // 自分を除いた他のユーザー名
+	Members []string `json:"members"`  // ユーザー名の配列
+	IsGroup bool     `json:"is_group"` // グループフラグ
+	Name    string   `json:"name"`
 }
 
 type RoomResponse struct {
 	RoomID int `json:"room_id"`
 }
 
+// POST /rooms
 func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, err := utils.ParseJWTFromRequest(r)
@@ -28,69 +33,80 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 		var req RoomRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "リクエスト形式エラー", http.StatusBadRequest)
+			http.Error(w, "不正なリクエスト形式", http.StatusBadRequest)
 			return
 		}
 
-		// 全メンバー（自分＋相手）
-		allUsernames := append([]string{username}, req.Members...)
-		isGroup := len(allUsernames) > 2
+		// 自分自身を含めた全メンバーを構成
+		allMembers := append([]string{username}, req.Members...)
 
-		// ユーザーID配列を作成
-		userIDs := make([]int32, 0, len(allUsernames)) // pgtype.Int4Array は int32
-
-		for _, uname := range allUsernames {
-			var uid int32
-			err := db.QueryRow(context.Background(), "SELECT id FROM users WHERE username=$1", uname).Scan(&uid)
+		// username → user_id 変換
+		userIDs := []int{}
+		for _, uname := range allMembers {
+			var uid int
+			err := db.QueryRow(context.Background(),
+				`SELECT id FROM users WHERE username = $1`, uname).Scan(&uid)
 			if err != nil {
-				http.Error(w, "ユーザーが見つかりません: "+uname, http.StatusNotFound)
+				http.Error(w, "ユーザーID取得失敗: "+uname, http.StatusBadRequest)
 				return
 			}
 			userIDs = append(userIDs, uid)
 		}
 
+		memberCount := len(userIDs)
 		var roomID int
 
-		if !isGroup {
-			// 1対1ルームの重複チェック
-			err = db.QueryRow(context.Background(), `
+		// ✅ 個別チャット（2人）なら、完全一致で既存ルームを再利用
+		if !req.IsGroup && memberCount == 2 {
+			sort.Ints(userIDs)
+			err := db.QueryRow(context.Background(), `
 				SELECT rm.room_id
 				FROM room_members rm
 				JOIN chat_rooms cr ON cr.id = rm.room_id
-				WHERE rm.user_id = ANY($1) AND cr.is_group = false
+				WHERE cr.is_group = false
 				GROUP BY rm.room_id
-				HAVING COUNT(DISTINCT rm.user_id) = 2
-			`, userIDs).Scan(&roomID)
+				HAVING COUNT(*) = 2 AND
+				       ARRAY_AGG(rm.user_id ORDER BY rm.user_id) = ARRAY[$1, $2]::int[]
+			`, userIDs[0], userIDs[1]).Scan(&roomID)
 
 			if err == nil {
-				// 既存ルームがあれば返す
 				json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})
 				return
 			}
 		}
 
-		// 新しいルームを作成
+		// ✅ グループチャット（3人以上）なら、room_name 重複を禁止
+		if req.IsGroup && memberCount >= 3 && req.Name != "" {
+			var exists bool
+			err := db.QueryRow(context.Background(), `
+				SELECT EXISTS (
+					SELECT 1 FROM chat_rooms
+					WHERE is_group = true AND room_name = $1
+				)
+			`, req.Name).Scan(&exists)
+			if err == nil && exists {
+				http.Error(w, "同名のグループが既に存在します", http.StatusConflict)
+				return
+			}
+		}
+
+		// ✅ 新規ルームを作成
 		err = db.QueryRow(context.Background(),
-			`INSERT INTO chat_rooms (is_group, created_at, updated_at)
-			 VALUES ($1, now(), now()) RETURNING id`,
-			isGroup,
-		).Scan(&roomID)
+			`INSERT INTO chat_rooms (is_group, room_name) VALUES ($1, $2) RETURNING id`,
+			req.IsGroup, req.Name).Scan(&roomID)
 		if err != nil {
-			http.Error(w, "ルーム作成失敗", http.StatusInternalServerError)
+			http.Error(w, "ルーム作成に失敗", http.StatusInternalServerError)
 			return
 		}
 
-		// メンバー登録
-		batch := &pgx.Batch{}
+		// ✅ 全メンバーを room_members に登録
 		for _, uid := range userIDs {
-			batch.Queue(`INSERT INTO room_members (room_id, user_id, joined_at) VALUES ($1, $2, now())`, roomID, uid)
-		}
-		br := db.SendBatch(context.Background(), batch)
-		defer br.Close()
-
-		if err := br.Close(); err != nil {
-			http.Error(w, "メンバー登録失敗", http.StatusInternalServerError)
-			return
+			_, err := db.Exec(context.Background(),
+				`INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)`,
+				roomID, uid)
+			if err != nil {
+				log.Printf("メンバー登録失敗: room=%d user=%d", roomID, uid)
+			}
 		}
 
 		json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})

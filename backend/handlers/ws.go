@@ -59,7 +59,11 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 		// 初期メッセージを読み込み、クライアントのRoomIDを確定
 		var initMsg WSMessage
 		if err := conn.ReadJSON(&initMsg); err != nil {
-			log.Println("初期メッセージ読み込み失敗:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Println("致命的な初期メッセージ読み込み失敗:", err)
+			} else {
+				log.Printf("初期接続が完了前に終了（無視）: %v", err)
+			}
 			return
 		}
 		client := &Client{Conn: conn, RoomID: initMsg.RoomID}

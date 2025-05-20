@@ -9,6 +9,8 @@ import Signup from "./Signup";
 import UserList from "./UserList";
 import ChatPage from "./ChatPage";
 import RequireAuth from "./RequireAuth";
+import CreateGroup from "./CreateGroup";
+
 
 //アプリ全体を定義する関数型Reactコンポーネント
 function App() {

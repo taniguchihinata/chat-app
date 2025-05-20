@@ -48,7 +48,7 @@ function Chat({ roomId, username }) {
     };
 
     ws.onerror = (err) => {
-      console.error("WebSocketエラー:", err);
+      console.debug("WebSocket一時的な接続エラー（開発中などでよくある）:", err);
     }
 
     ws.onclose = () => {
