@@ -31,7 +31,7 @@ func main() {
 	http.Handle("/rooms", utils.WithCORS(handlers.GetOrCreateRoomHandler(db)))
 	http.HandleFunc("/me", utils.WithCORS(handlers.MeHandler))
 	http.HandleFunc("/logout", utils.WithCORS(handlers.LogoutHandler))
-	http.HandleFunc("/ws", utils.WithCORS(handlers.WebSocketHandler(db)))
+	http.HandleFunc("/ws", handlers.WebSocketHandler(db))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

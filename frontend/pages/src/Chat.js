@@ -7,6 +7,26 @@ function Chat({ roomId, username }) {
   const socketRef = useRef(null)
   const bottomRef = useRef(null);
 
+  useEffect(() => {
+    const fetchMessages = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`http://localhost:8081/messages?room=${roomId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("メッセージ取得に失敗");
+        const data = await res.json();
+        setMessages(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("過去メッセージ取得エラー:", err);
+      }
+    };
+
+    fetchMessages();
+  }, [roomId]);
+
   //WebSocket接続とメッセージ受信
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -22,7 +42,9 @@ function Chat({ roomId, username }) {
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => 
+        Array.isArray(prev) ? [...prev, msg] : [msg]
+      );
     };
 
     ws.onerror = (err) => {
