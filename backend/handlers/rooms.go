@@ -1,18 +1,17 @@
-// チャットルームのデータベースを作成
 package handlers
 
 import (
+	"backend/utils"
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"log"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type RoomRequest struct {
-	PartnerUsername string `json:"partner"`
+	Members []string `json:"members"` // 自分を除いた他のユーザー名
 }
 
 type RoomResponse struct {
@@ -21,78 +20,79 @@ type RoomResponse struct {
 
 func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "POSTメソッドのみ許可されています", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// ヘッダーから自分のusernameを取得
-		encodedUser := r.Header.Get("X-User")
-		decodedBytes, err := base64.StdEncoding.DecodeString(encodedUser)
+		username, err := utils.ParseJWTFromRequest(r)
 		if err != nil {
-			http.Error(w, "ユーザー名デコード失敗", http.StatusBadRequest)
+			http.Error(w, "認証エラー", http.StatusUnauthorized)
 			return
 		}
-		username := string(decodedBytes)
 
-		// ボディから相手のusernameを取得
 		var req RoomRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "リクエストが不正です", http.StatusBadRequest)
+			http.Error(w, "リクエスト形式エラー", http.StatusBadRequest)
 			return
 		}
 
-		// 送信者と受信者のIDを取得
-		var myID, partnerID int
-		if err := db.QueryRow(context.Background(), `SELECT id FROM users WHERE username = $1`, username).Scan(&myID); err != nil {
-			http.Error(w, "送信者ユーザーが見つかりません", http.StatusBadRequest)
-			return
-		}
-		if err := db.QueryRow(context.Background(), `SELECT id FROM users WHERE username = $1`, req.PartnerUsername).Scan(&partnerID); err != nil {
-			http.Error(w, "相手ユーザーが見つかりません", http.StatusBadRequest)
-			return
+		// 全メンバー（自分＋相手）
+		allUsernames := append([]string{username}, req.Members...)
+		isGroup := len(allUsernames) > 2
+
+		// ユーザーID配列を作成
+		userIDs := make([]int32, 0, len(allUsernames)) // pgtype.Int4Array は int32
+
+		for _, uname := range allUsernames {
+			var uid int32
+			err := db.QueryRow(context.Background(), "SELECT id FROM users WHERE username=$1", uname).Scan(&uid)
+			if err != nil {
+				http.Error(w, "ユーザーが見つかりません: "+uname, http.StatusNotFound)
+				return
+			}
+			userIDs = append(userIDs, uid)
 		}
 
-		// 既存のルームを探す（両ユーザーが参加しているルーム）
 		var roomID int
-		query := `
-			SELECT rm1.room_id
-			FROM room_members rm1
-			JOIN room_members rm2 ON rm1.room_id = rm2.room_id
-			WHERE rm1.user_id = $1 AND rm2.user_id = $2
-			LIMIT 1`
-		err = db.QueryRow(context.Background(), query, myID, partnerID).Scan(&roomID)
-		if err == nil {
-			log.Println("既存ルームを使用: room_id =", roomID)
-			json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})
-			return
+
+		if !isGroup {
+			// 1対1ルームの重複チェック
+			err = db.QueryRow(context.Background(), `
+				SELECT rm.room_id
+				FROM room_members rm
+				JOIN chat_rooms cr ON cr.id = rm.room_id
+				WHERE rm.user_id = ANY($1) AND cr.is_group = false
+				GROUP BY rm.room_id
+				HAVING COUNT(DISTINCT rm.user_id) = 2
+			`, userIDs).Scan(&roomID)
+
+			if err == nil {
+				// 既存ルームがあれば返す
+				json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})
+				return
+			}
 		}
 
-		// なければ新規作成
-		tx, err := db.Begin(context.Background())
-		if err != nil {
-			http.Error(w, "トランザクション開始失敗", http.StatusInternalServerError)
-			return
-		}
-		defer tx.Rollback(context.Background())
-
-		err = tx.QueryRow(context.Background(), `INSERT INTO chat_rooms DEFAULT VALUES RETURNING id`).Scan(&roomID)
+		// 新しいルームを作成
+		err = db.QueryRow(context.Background(),
+			`INSERT INTO chat_rooms (is_group, created_at, updated_at)
+			 VALUES ($1, now(), now()) RETURNING id`,
+			isGroup,
+		).Scan(&roomID)
 		if err != nil {
 			http.Error(w, "ルーム作成失敗", http.StatusInternalServerError)
 			return
 		}
-		_, err = tx.Exec(context.Background(), `INSERT INTO room_members (room_id, user_id) VALUES ($1, $2), ($1, $3)`, roomID, myID, partnerID)
-		if err != nil {
-			http.Error(w, "ルームメンバー追加失敗", http.StatusInternalServerError)
-			return
+
+		// メンバー登録
+		batch := &pgx.Batch{}
+		for _, uid := range userIDs {
+			batch.Queue(`INSERT INTO room_members (room_id, user_id, joined_at) VALUES ($1, $2, now())`, roomID, uid)
 		}
-		if err := tx.Commit(context.Background()); err != nil {
-			http.Error(w, "コミット失敗", http.StatusInternalServerError)
+		br := db.SendBatch(context.Background(), batch)
+		defer br.Close()
+
+		if err := br.Close(); err != nil {
+			http.Error(w, "メンバー登録失敗", http.StatusInternalServerError)
 			return
 		}
 
-		log.Println("新規ルーム作成: room_id =", roomID)
-		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(RoomResponse{RoomID: roomID})
 	}
 }

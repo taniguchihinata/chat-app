@@ -1,38 +1,40 @@
-//ユーザー一覧画面を生成
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-//
-function UserList({ username }) {
-  //表示するユーザーリストを格納
+function UserList() {
   const [users, setUsers] = useState([]);
-
   const navigate = useNavigate();
 
-  //ユーザーリスト一覧を取得
+  // ユーザーリスト一覧を取得
   useEffect(() => {
-    fetch("http://localhost:8081/users")
-      .then((res) => res.json())
-      .then((data) => {
-        const filtered = data.filter((user) => user.username !== username);
-        setUsers(filtered);
-      });
-  }, [username]);
+    const fetchUsers = async () => {
+      const myUsername = localStorage.getItem("username");
 
-  //チャットルーム作成のハンドラ
+      const res = await fetch("http://localhost:8081/users");
+      const data = await res.json();
+
+      // 自分以外のユーザーだけ表示
+      const filtered = data.filter((user) => user.username !== myUsername);
+      setUsers(filtered);
+    };
+
+    fetchUsers();
+  }, []);
+
+  // チャットルーム作成のハンドラ
   const handleClick = async (partnerUsername) => {
-    //日本語でも使えるようにBase64でエンコード
-    const encodedUser = btoa(unescape(encodeURIComponent(username)));
+    const token = localStorage.getItem("token");
 
     try {
-      //チャットルーム作成のAPIの呼び出し
       const res = await fetch("http://localhost:8081/rooms", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-User": encodedUser,
+          "Authorization": `Bearer ${token}`,
         },
-        body: JSON.stringify({ partner: partnerUsername }),
+        body: JSON.stringify({
+          members: [partnerUsername],
+        }),
       });
 
       if (!res.ok) throw new Error("ルーム作成に失敗");
@@ -44,7 +46,6 @@ function UserList({ username }) {
     }
   };
 
-  //ユーザー一覧取得
   return (
     <div style={{ padding: "1rem" }}>
       <h2>ユーザー一覧</h2>
