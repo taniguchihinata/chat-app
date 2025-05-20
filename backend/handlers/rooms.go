@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 
 	"backend/utils"
 
@@ -172,5 +174,72 @@ func RoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		http.Error(w, "不正なリクエスト形式", http.StatusBadRequest)
+	}
+}
+
+// GET /rooms/{id} - ルーム詳細を取得する
+func GetRoomDetailHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// JWTで認証確認（値は使わない）
+		_, err := utils.ParseJWTFromRequest(r)
+		if err != nil {
+			http.Error(w, "認証エラー", http.StatusUnauthorized)
+			return
+		}
+
+		// ルームIDの取得
+		roomIDStr := r.URL.Path[len("/rooms/"):]
+		roomID, err := strconv.Atoi(roomIDStr)
+		if err != nil {
+			http.Error(w, "ルームIDが無効です", http.StatusBadRequest)
+			return
+		}
+
+		// ルームの基本情報取得
+		var isGroup bool
+		var roomName sql.NullString
+		err = db.QueryRow(context.Background(), `
+			SELECT is_group, room_name FROM chat_rooms WHERE id = $1
+		`, roomID).Scan(&isGroup, &roomName)
+		if err != nil {
+			http.Error(w, "ルームが見つかりません", http.StatusNotFound)
+			return
+		}
+
+		// メンバー一覧取得（username）
+		rows, err := db.Query(context.Background(), `
+			SELECT u.username FROM users u
+			JOIN room_members rm ON u.id = rm.user_id
+			WHERE rm.room_id = $1
+		`, roomID)
+		if err != nil {
+			http.Error(w, "メンバー取得失敗", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var members []string
+		for rows.Next() {
+			var uname string
+			if err := rows.Scan(&uname); err == nil {
+				members = append(members, uname)
+			}
+		}
+
+		// 自分以外のメンバー名 or グループ名を返す
+		result := map[string]interface{}{
+			"type":    "direct",
+			"users":   members,
+			"name":    "",
+			"room_id": roomID,
+		}
+
+		if isGroup {
+			result["type"] = "group"
+			result["name"] = roomName.String
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
 	}
 }

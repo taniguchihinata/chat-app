@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, } from "react";
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [roomName, setRoomName] = useState("チャットルーム");
 
   const socketRef = useRef(null)
   const bottomRef = useRef(null);
@@ -60,6 +61,28 @@ function Chat({ roomId, username }) {
     };
   }, [roomId]);
 
+  useEffect(() => {
+  const fetchRoomInfo = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:8081/rooms/${roomId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.type === "group") {
+        setRoomName(data.name);
+      } else {
+        const other = data.users.find((u) => u !== username);
+        setRoomName(other);
+      }
+    } catch {
+      setRoomName("チャットルーム");
+    }
+  };
+  fetchRoomInfo();
+}, [roomId, username]);
+
+
   //メッセージ送信
   const handleSend = () => {
     if (!text.trim()) return;
@@ -81,7 +104,7 @@ function Chat({ roomId, username }) {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h3>チャットルーム: {roomId}</h3>
+        <h3>チャット: {roomName}</h3>
       </div>
 
       <div className="chat-messages" style={{ overflowY: "auto", maxHeight: "60vh", padding: "0 10px" }}>
