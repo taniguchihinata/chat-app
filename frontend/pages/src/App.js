@@ -81,14 +81,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           {/*RequireAuthでトークン無し不正ログインを防ぐ*/}
-          <Route
-            path="/users"
-            element={
-              <RequireAuth>
-                <UserList username={username} />
-              </RequireAuth>
-            }
-          />
+          
           <Route
             path="/chat/:roomId"
             element={
@@ -105,7 +98,17 @@ function App() {
               </RequireAuth>
             }
           />
+        
+          <Route
+            path="/chat"
+            element={
+              <RequireAuth>
+                <UserList username={username} />
+              </RequireAuth>
+            }
+          />
         </Routes>
+
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ function Login() {
 
       
       setMessage('ログイン成功！');
-      navigate('/users');
+      navigate('/chat');
     } catch (err) {
       console.error('ログイン中にエラー:', err);
       setMessage('ログイン中にエラーが発生しました');

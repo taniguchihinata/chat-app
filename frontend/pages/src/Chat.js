@@ -104,7 +104,7 @@ function Chat({ roomId, username }) {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h3>チャット: {roomName}</h3>
+        <h3>チャット for {roomName}</h3>
       </div>
 
       <div className="chat-messages" style={{ overflowY: "auto", maxHeight: "60vh", padding: "0 10px" }}>

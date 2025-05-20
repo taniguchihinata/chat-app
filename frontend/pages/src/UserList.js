@@ -63,30 +63,23 @@ function UserList() {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <h2>ユーザー一覧</h2>
-      <ul style={{ listStyle: "none", padding: 0 }}>
+      <h2 className="user-list-title">ユーザー一覧</h2>
+      <ul style ={{ listStyle: "none", padding: 0 }}>
         {users.map((user) => (
           <li
             key={user.id}
             onClick={() => handleClick(user.username)}
-            style={{
-              cursor: "pointer",
-              padding: "8px 12px",
-              borderBottom: "1px solid #ccc",
-              backgroundColor: "#f9f9f9",
-              marginBottom: "4px",
-              borderRadius: "4px",
-            }}
+            className="user-name"
           >
             {user.username}
           </li>
         ))}
       </ul>
-      <h2 style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <h2 className="user-list-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         グループ一覧
         <button
           onClick={() => navigate("/groups/create")}
-          style={{ fontSize: "0.8rem", padding: "4px 8px", marginLeft: "12px" }}
+          style={{ fontSize: "0.8rem", padding: "4px 8px", marginLeft: "12px", fontWeight: 500}}
         >
         新規グループ作成
         </button>
@@ -96,14 +89,7 @@ function UserList() {
           <li
             key={group.room_id}
             onClick={() => navigate(`/chat/${group.room_id}`)}
-            style={{
-              cursor: "pointer",
-              padding: "8px 12px",
-              borderBottom: "1px solid #ccc",
-              backgroundColor: "#eef1f5",
-              marginBottom: "4px",
-              borderRadius: "4px",
-            }}
+            className="user-name"
           >
             {group.room_name || "(名前なしのグループ)"}
           </li>

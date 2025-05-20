@@ -8,8 +8,8 @@ function ChatPage({ username }) {
 
   return (
     <div className="chat-page">
-      <div className="user-list">
-        <UserList username={username} />
+      <div>
+        <UserList className="user-list" username={username} />
       </div>
       <div className="chat-area">
         <Chat roomId={roomId} username={username} />
