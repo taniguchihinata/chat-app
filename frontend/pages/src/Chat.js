@@ -1,13 +1,90 @@
 import React, { useEffect, useRef, useState, } from "react";
+import { useInView } from "react-intersection-observer";
+
+
+function MessageItem({ msg, username, socketRef, roomId, readStatus, setReadStatus, sendWhenReady }) {
+  const isMine = msg.username === username;
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.6,
+  });
+
+  useEffect(() => {
+    if (inView && !isMine) {
+      const token = localStorage.getItem("token");
+
+      // ✅ /read API呼び出し
+      fetch("http://localhost:8081/read", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message_id: msg.id }),
+      }).catch((err) => console.error("既読登録失敗:", err));
+
+      // ✅ WebSocketで既読通知送信
+      sendWhenReady({
+        type: "read",
+        room_id: parseInt(roomId),
+        username,
+        message_id: msg.id,
+      });
+    }
+  }, [inView, isMine, msg.id, roomId, username, sendWhenReady]);
+
+  return (
+    <div
+      ref={ref}
+      key={msg.id}
+      className={isMine ? "my-message" : "other-message"}
+      style={{
+        textAlign: isMine ? "right" : "left",
+        marginBottom: "4px",
+        display: "flex",
+        flexDirection: isMine ? "row-reverse" : "row",
+        alignItems: "center",
+      }}
+    >
+      {isMine && readStatus[msg.id] && (
+        <span style={{ fontSize: "0.8rem", color: "gray", margin: "0 6px" }}>
+          既読
+        </span>
+      )}
+      <div className="message-content">
+        <strong>{msg.username}: </strong>
+        {msg.text}
+      </div>
+    </div>
+  );
+}
 
 function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [roomName, setRoomName] = useState("チャットルーム");
+  const [readStatus, setReadStatus] = useState({}); // messageId -> true
 
   const socketRef = useRef(null)
   const bottomRef = useRef(null);
 
+  const sendWhenReady = (messageObj) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(messageObj));
+    } else {
+      const interval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(messageObj));
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+  };
+
+  //メッセージの取得
   useEffect(() => {
     const fetchMessages = async () => {
       const token = localStorage.getItem("token");
@@ -35,14 +112,25 @@ function Chat({ roomId, username }) {
     socketRef.current = ws;
 
     ws.onopen = () => {
-      // 初期メッセージでルームID送信
-      ws.send(JSON.stringify({
-        room_id: parseInt(roomId),
-      }));
+      sendWhenReady({ 
+        type: "join",
+        room_id: parseInt(roomId) });
     };
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
+
+      if (msg.type === "read"){
+        console.log("既読通知受信:",msg);
+
+        //自分が送信したメッセージに対して既読マークを表示する
+        setReadStatus((prev) => ({
+          ...prev,
+          [msg.message_id]: true,
+        }));
+        return;
+      }
+
       setMessages((prev) => 
         Array.isArray(prev) ? [...prev, msg] : [msg]
       );
@@ -61,6 +149,34 @@ function Chat({ roomId, username }) {
     };
   }, [roomId]);
 
+  // 新しいメッセージが届いたときに既読通知を送信
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+
+    const isMine = lastMsg.username === username;
+    if (!isMine) {
+      const token = localStorage.getItem("token");
+
+      fetch("http://localhost:8081/read", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message_id: lastMsg.id }),
+      }).catch((err) => console.error("既読登録失敗:", err));
+
+      sendWhenReady({
+        type: "read",
+        room_id: parseInt(roomId),
+        username,
+        message_id: lastMsg.id,
+      });
+    }
+  }, [messages, username, roomId]);
+
+  //ルーム情報取得
   useEffect(() => {
   const fetchRoomInfo = async () => {
     const token = localStorage.getItem("token");
@@ -87,10 +203,11 @@ function Chat({ roomId, username }) {
   const handleSend = () => {
     if (!text.trim()) return;
 
-    socketRef.current?.send(JSON.stringify({
+    sendWhenReady({
+      type: "message",
       room_id: parseInt(roomId),
       text: text.trim(),
-    }));
+    });
 
     setText("");
   };
@@ -100,6 +217,8 @@ function Chat({ roomId, username }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end"});
   }, [messages]);
 
+  
+
   //UI
   return (
     <div className="chat-container">
@@ -107,18 +226,21 @@ function Chat({ roomId, username }) {
         <h3>チャット for {roomName}</h3>
       </div>
 
-      <div className="chat-messages" style={{ overflowY: "auto", maxHeight: "60vh", padding: "0 10px" }}>
+      <div 
+        className="chat-messages" 
+        style={{ overflowY: "auto", maxHeight: "60vh", padding: "0 10px" }}
+      >
         {messages?.map((msg) => (
-          <div
-            key={msg.id} 
-            style={{
-              textAlign: msg.username === username ? "right" : "left",
-              marginBottom: "4px",
-            }}
-          >
-            <strong>{msg.username}: </strong>
-            {msg.text}
-          </div>
+          <MessageItem
+            key={msg.id}
+            msg={msg}
+            username={username}
+            socketRef={socketRef}
+            roomId={roomId}
+            readStatus={readStatus}
+            setReadStatus={setReadStatus}
+            sendWhenReady={sendWhenReady}
+          />
         ))}
         <div ref={bottomRef} style={{ height: "0" ,margin: 0, padding: 0}} />
       </div>

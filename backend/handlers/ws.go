@@ -13,10 +13,12 @@ import (
 
 // WebSocketで使用する構造体
 type WSMessage struct {
-	RoomID   int    `json:"room_id"`
-	Text     string `json:"text"`
-	Sender   int    `json:"sender_id"`
-	Username string `json:"username"`
+	Type      string `json:"type"` //"message" or "read"
+	RoomID    int    `json:"room_id"`
+	Text      string `json:"text"`
+	Sender    int    `json:"sender_id"`
+	Username  string `json:"username"`
+	MessageID int    `json:"message_id,omitempty"` // 既読通知用
 }
 
 type Client struct {
@@ -81,6 +83,39 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 			if err := conn.ReadJSON(&msg); err != nil {
 				log.Println("メッセージ読み込みエラー:", err)
 				break
+			}
+
+			//既読通知
+			if msg.Type == "read" {
+				log.Printf("既読通知: %s がメッセージ %d を読んだ（ルーム %d）", msg.Username, msg.MessageID, msg.RoomID)
+
+				var readerID int
+				err := db.QueryRow(context.Background(),
+					"SELECT id FROM users WHERE username=$1", msg.Username,
+				).Scan(&readerID)
+				if err != nil {
+					log.Println("既読ユーザーID取得失敗:", err)
+				} else {
+					_, err := db.Exec(context.Background(),
+						`INSERT INTO message_reads (message_id, user_id)
+						 VALUES ($1, $2)
+						 ON CONFLICT DO NOTHING`,
+						msg.MessageID, readerID,
+					)
+					if err != nil {
+						log.Println("既読情報保存失敗:", err)
+					}
+				}
+
+				mu.Lock()
+				for _, c := range roomClients[msg.RoomID] {
+					if err := c.Conn.WriteJSON(msg); err != nil {
+						log.Println("既読通知送信エラー:", err)
+					}
+				}
+				mu.Unlock()
+
+				continue // 下の保存処理には行かない
 			}
 
 			log.Printf("ルーム%d: %s", msg.RoomID, msg.Text)

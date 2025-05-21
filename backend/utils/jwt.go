@@ -15,7 +15,7 @@ var jwtSecret = []byte("your_secret_key") // 本番環境では環境変数で�
 
 // トークン生成
 func GenerateJWT(username string) (string, error) {
-	jti := uuid.New().String()
+	jti := uuid.New().String() //ユニバーサル一意識別子、かぶらないようにいっぱい文字をだすよ
 	claims := jwt.MapClaims{
 		"username": username,
 		"exp":      time.Now().Add(time.Hour * 24).Unix(), //24時間有効
