@@ -41,7 +41,8 @@ html, body, .App {
 nav {
   flex-shrink: 0; /* 高さを固定（上部に残す） */
   padding: 16px;
-  background-color: #ffee00;
+  color: #fff;
+  background-color: #ff7700;
   border-bottom: 1px solid #ccc;
   border-radius: 20px;
   font-weight: 700;
@@ -88,7 +89,8 @@ nav {
 }
 
 .user-name{
-  background-color: #ffee00;
+  color: #fff;
+  background-color: #ff7700;
   padding: 8px 12px;
   border-bottom: 1px solid #ccc;
   margin-bottom: 4px;
@@ -96,4 +98,5 @@ nav {
   font-weight: 700;
   cursor: pointer;
   border-radius: 10px;
+  width: 300px;
 }
