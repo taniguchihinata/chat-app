@@ -10,7 +10,7 @@ function MessageItem({ msg, username, socketRef, roomId, readStatus, setReadStat
   });
 
   useEffect(() => {
-    if (inView && !isMine) {
+    if (inView && !isMine && !readStatus[msg.id]) {
       const token = localStorage.getItem("token");
 
       // ✅ /read API呼び出し
@@ -30,8 +30,13 @@ function MessageItem({ msg, username, socketRef, roomId, readStatus, setReadStat
         username,
         message_id: msg.id,
       });
+
+      setReadStatus((prev) => ({
+        ...prev,
+        [msg.id]: true,
+      }));
     }
-  }, [inView, isMine, msg.id, roomId, username, sendWhenReady]);
+  }, [inView, isMine, msg.id, roomId, username, sendWhenReady, readStatus, setReadStatus]);
 
   return (
     <div
@@ -63,10 +68,23 @@ function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [roomName, setRoomName] = useState("チャットルーム");
-  const [readStatus, setReadStatus] = useState({}); // messageId -> true
+  const [readStatus, setReadStatus] = useState(() => {
+    try{
+      const saved = localStorage.getItem(`readStatus-${roomId}-${username}`);
+      return saved ? JSON.parse(saved) : {};
+    }catch {
+      return{};
+    }
+  });
 
   const socketRef = useRef(null)
   const bottomRef = useRef(null);
+
+  //既読状態の永続化
+  //readStatusの状態をlocaStorageに保存する
+  useEffect(() => {
+    localStorage.setItem(`readStatus-${roomId}-${username}`, JSON.stringify(readStatus));
+  }, [readStatus, roomId, username]);
 
   const sendWhenReady = (messageObj) => {
     const socket = socketRef.current;
@@ -155,7 +173,7 @@ function Chat({ roomId, username }) {
     const lastMsg = messages[messages.length - 1];
 
     const isMine = lastMsg.username === username;
-    if (!isMine) {
+    if (!isMine && !readStatus[lastMsg.id]) {
       const token = localStorage.getItem("token");
 
       fetch("http://localhost:8081/read", {
@@ -174,7 +192,7 @@ function Chat({ roomId, username }) {
         message_id: lastMsg.id,
       });
     }
-  }, [messages, username, roomId]);
+  }, [messages, username, roomId, readStatus]);
 
   //ルーム情報取得
   useEffect(() => {
@@ -216,8 +234,6 @@ function Chat({ roomId, username }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end"});
   }, [messages]);
-
-  
 
   //UI
   return (

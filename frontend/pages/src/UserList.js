@@ -11,12 +11,17 @@ function UserList() {
   // ユーザーリスト一覧を取得
   useEffect(() => {
     const fetchUsers = async () => {
-      const res = await fetch("http://localhost:8081/users");
-      const data = await res.json();
-
-      // 自分以外のユーザーだけ表示
-      const filtered = data.filter((user) => user.username !== myUsername);
-      setUsers(filtered);
+      try {
+        const res = await fetch("http://localhost:8081/users");
+        const data = await res.json();
+        const filtered = Array.isArray(data)
+          ? data.filter((user) => user.username !== myUsername)
+          : [];
+        setUsers(filtered);
+      } catch (err) {
+        console.error("ユーザー取得失敗:", err);
+        setUsers([]);
+      }
     };
 
     fetchUsers();
@@ -25,12 +30,17 @@ function UserList() {
   // グループ一覧を取得
   useEffect(() => {
     const fetchGroups = async () => {
-      const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8081/rooms?type=group", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setGroups(data);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8081/rooms?type=group", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setGroups(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("グループ取得失敗:", err);
+        setGroups([]);
+      }
     };
 
     fetchGroups();
@@ -65,15 +75,16 @@ function UserList() {
     <div style={{ padding: "1rem" }}>
       <h2 className="user-list-title">ユーザー一覧</h2>
       <ul style ={{ listStyle: "none", padding: 0 }}>
-        {users.map((user) => (
-          <li
-            key={user.id}
-            onClick={() => handleClick(user.username)}
-            className="user-name"
-          >
-            {user.username}
-          </li>
-        ))}
+        {Array.isArray(users) &&
+          users.map((user) => (
+            <li
+              key={user.id}
+              onClick={() => handleClick(user.username)}
+              className="user-name"
+            >
+              {user.username}
+            </li>
+          ))}
       </ul>
       <h2 className="user-list-title" style={{ alignItems: "center", justifyContent: "space-between" }}>
         グループ一覧
@@ -85,15 +96,17 @@ function UserList() {
         </button>
       </h2>
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {groups.map((group) => (
-          <li
-            key={group.room_id}
-            onClick={() => navigate(`/chat/${group.room_id}`)}
-            className="user-name"
-          >
-            {group.room_name || "(名前なしのグループ)"}
-          </li>
-        ))}
+        {Array.isArray(groups) &&
+          groups.map((group) => (
+            <li
+              key={group.room_id}
+              onClick={() => navigate(`/chat/${group.room_id}`)}
+              className="user-name"
+            >
+              {group.room_name || "(名前なしのグループ)"}
+            </li>
+          ))
+        }
       </ul>
     </div>
   );
