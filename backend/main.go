@@ -34,6 +34,7 @@ func main() {
 	http.HandleFunc("/ws", handlers.WebSocketHandler(db))
 	http.Handle("/rooms/", utils.WithCORS(handlers.GetRoomDetailHandler(db)))
 	http.Handle("/read", utils.WithCORS(handlers.MarkAsReadHandler(db)))
+	http.Handle("/read_status", utils.WithCORS(handlers.GetReadStatusHandler(db)))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

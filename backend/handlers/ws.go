@@ -35,6 +35,10 @@ var (
 	mu          sync.Mutex                // goroutine競合防止
 )
 
+// handlers/ws.go の下部
+var RoomClients = roomClients
+var RoomClientsMutex = &mu
+
 func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenStr := r.URL.Query().Get("token")

@@ -68,22 +68,28 @@ function Chat({ roomId, username }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [roomName, setRoomName] = useState("チャットルーム");
-  const [readStatus, setReadStatus] = useState(() => {
-    try{
-      const saved = localStorage.getItem(`readStatus-${roomId}-${username}`);
-      return saved ? JSON.parse(saved) : {};
-    }catch {
-      return{};
-    }
-  });
+  const [readStatus, setReadStatus] = useState({});
 
   const socketRef = useRef(null)
   const bottomRef = useRef(null);
 
+  // ✅ readStatus を roomId 有効時に復元
+  useEffect(() => {
+    if (!roomId || !username) return;
+    try {
+      const saved = localStorage.getItem(`readStatus-${roomId}-${username}`);
+      setReadStatus(saved ? JSON.parse(saved) : {});
+    } catch {
+      setReadStatus({});
+    }
+  }, [roomId, username]);
+
   //既読状態の永続化
   //readStatusの状態をlocaStorageに保存する
   useEffect(() => {
-    localStorage.setItem(`readStatus-${roomId}-${username}`, JSON.stringify(readStatus));
+    if (roomId && username) {
+      localStorage.setItem(`readStatus-${roomId}-${username}`, JSON.stringify(readStatus));
+    }  
   }, [readStatus, roomId, username]);
 
   const sendWhenReady = (messageObj) => {
@@ -101,6 +107,34 @@ function Chat({ roomId, username }) {
       }, 100);
     }
   };
+
+  // ルーム参加時に既読状態取得
+useEffect(() => {
+  if (!roomId || !username) return;
+  const fetchReadStatus = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:8081/read_status?room=${roomId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        const readMap = {};
+        data.forEach((id) => {
+          readMap[id] = true;
+        });
+        setReadStatus((prev) => ({ ...prev, ...readMap }));
+      }
+    } catch (err) {
+      console.error("既読状態の取得失敗:", err);
+    }
+  };
+
+  fetchReadStatus();
+}, [roomId, username]);
+
 
   //メッセージの取得
   useEffect(() => {
