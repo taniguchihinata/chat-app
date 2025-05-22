@@ -266,7 +266,7 @@ useEffect(() => {
 
   //初回レンダリング時の処理
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end"});
+    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end"});
   }, [messages]);
 
   //UI
@@ -282,7 +282,7 @@ useEffect(() => {
       >
         {messages?.map((msg) => (
           <MessageItem
-            key={msg.id}
+            key={`${msg.id}-${readStatus[msg.id] ? 'read' : 'unread'}`}
             msg={msg}
             username={username}
             socketRef={socketRef}

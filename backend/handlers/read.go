@@ -42,7 +42,7 @@ func MarkAsReadHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 		// message_reads に登録（すでに既読なら無視）
 		_, err = db.Exec(context.Background(),
-			`INSERT INTO message_reads (message_id, reader_id)
+			`INSERT INTO message_reads (message_id, user_id)
 			 VALUES ($1, $2)
 			 ON CONFLICT DO NOTHING`,
 			req.MessageID, userID,
