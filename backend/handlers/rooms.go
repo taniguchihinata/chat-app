@@ -137,6 +137,7 @@ func GetGroupRoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
 			FROM chat_rooms cr
 			JOIN room_members rm ON cr.id = rm.room_id
 			WHERE cr.is_group = true AND rm.user_id = $1
+			ORDER BY m.created_at ASC
 		`, userID)
 		if err != nil {
 			http.Error(w, "DB取得失敗", http.StatusInternalServerError)

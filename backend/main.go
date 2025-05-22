@@ -38,6 +38,13 @@ func main() {
 	http.Handle("/read_status_full", utils.WithCORS(handlers.GetFullReadStatusHandler(db)))
 	http.Handle("/unread_count", utils.WithCORS(handlers.GetUnreadCountHandler(db)))
 	http.Handle("/mark_all_read", utils.WithCORS(handlers.MarkAllAsReadHandler(db)))
+	http.Handle("/room_info", utils.WithCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			roomID := r.URL.Query().Get("room")
+			r.URL.Path = "/rooms/" + roomID
+		}
+		handlers.GetRoomDetailHandler(db).ServeHTTP(w, r)
+	})))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

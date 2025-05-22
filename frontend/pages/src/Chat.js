@@ -1,4 +1,3 @@
-// Chat.js（readersByMessageId を /read_status_full で初期化する版）
 import React, { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
@@ -19,7 +18,6 @@ function MessageItem({
     if (inView && !isMine && !readStatus[msg.id]) {
       const token = localStorage.getItem("token");
 
-      // ✅ /read API呼び出し
       fetch("http://localhost:8081/read", {
         method: "POST",
         headers: {
@@ -29,7 +27,6 @@ function MessageItem({
         body: JSON.stringify({ message_id: msg.id }),
       }).catch((err) => console.error("既読登録失敗:", err));
 
-      // ✅ WebSocketで既読通知送信
       sendWhenReady({
         type: "read",
         room_id: parseInt(roomId),
@@ -57,7 +54,7 @@ function MessageItem({
         alignItems: "center",
       }}
     >
-      {isMine && readersByMessageId[msg.id]?.length > 0  && (
+      {isMine && readersByMessageId[msg.id]?.length > 0 && (
         <span style={{ fontSize: "0.8rem", color: "gray", margin: "0 6px" }}>
           既読: {readersByMessageId[msg.id].join(",")}
         </span>
@@ -77,10 +74,33 @@ function Chat({ roomId, username, onReadReaset }) {
   const [readStatus, setReadStatus] = useState({});
   const [readersByMessageId, setReadersByMessageId] = useState({});
 
-  const socketRef = useRef(null)
+  const socketRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // ルーム参加時に既読状態取得
+  useEffect(() => {
+    const fetchRoomName = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`http://localhost:8081/rooms/${roomId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data && data.name) {
+          setRoomName(data.name);
+        } else if (data && Array.isArray(data.users)) {
+          const partnerName = data.users.find((user) => user !== username);
+          setRoomName(partnerName || "相手未設定");
+        }
+      } catch (err) {
+        console.error("ルーム名取得失敗:", err);
+      }
+    };
+
+    if (roomId) {
+      fetchRoomName();
+    }
+  }, [roomId, username]);
+
   useEffect(() => {
     if (!roomId || !username) return;
     const token = localStorage.getItem("token");
@@ -125,26 +145,25 @@ function Chat({ roomId, username, onReadReaset }) {
   }, [roomId, username]);
 
   useEffect(() => {
-  const markAllAsRead = async () => {
-    const token = localStorage.getItem("token");
-    try {
-      await fetch(`http://localhost:8081/mark_all_read?room=${roomId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if(onReadReaset) onReadReaset();
-    } catch (err) {
-      console.error("未読リセット失敗:", err);
+    const markAllAsRead = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        await fetch(`http://localhost:8081/mark_all_read?room=${roomId}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (onReadReaset) onReadReaset();
+      } catch (err) {
+        console.error("未読リセット失敗:", err);
+      }
+    };
+
+    if (roomId) {
+      markAllAsRead();
     }
-  };
-
-  if (roomId) {
-    markAllAsRead();
-  }
-}, [roomId]);
-
+  }, [roomId]);
 
   const sendWhenReady = (messageObj) => {
     const socket = socketRef.current;
@@ -162,7 +181,6 @@ function Chat({ roomId, username, onReadReaset }) {
     }
   };
 
-  //WebSocket接続とメッセージ受信
   useEffect(() => {
     const token = localStorage.getItem("token");
     const ws = new WebSocket(`ws://localhost:8081/ws?token=${token}`);
@@ -178,16 +196,13 @@ function Chat({ roomId, username, onReadReaset }) {
       const msg = JSON.parse(event.data);
 
       if (msg.type === "read"){
-        //自分が送信したメッセージに対して既読マークを表示する
         setReadStatus((prev) => ({
           ...prev,
           [msg.message_id]: true,
         }));
 
-        // 読んだユーザー一覧に追加
         setReadersByMessageId((prev) => {
           const readers = prev[msg.message_id] || [];
-          // 重複チェック
           if (!readers.includes(msg.username)) {
             return {
               ...prev,
@@ -214,7 +229,6 @@ function Chat({ roomId, username, onReadReaset }) {
     };
   }, [roomId]);
 
-  //メッセージの取得
   useEffect(() => {
     const fetchMessages = async () => {
       const token = localStorage.getItem("token");
@@ -238,7 +252,6 @@ function Chat({ roomId, username, onReadReaset }) {
     bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages]);
 
-  //メッセージ送信
   const handleSend = () => {
     if (!text.trim()) return;
 
@@ -250,7 +263,6 @@ function Chat({ roomId, username, onReadReaset }) {
     setText("");
   };
 
-  //UI
   return (
     <div className="chat-container">
       <div className="chat-header">
@@ -274,7 +286,7 @@ function Chat({ roomId, username, onReadReaset }) {
             readersByMessageId={readersByMessageId}
           />
         ))}
-        <div ref={bottomRef} style={{ height: "0" ,margin: 0, padding: 0}} />
+        <div ref={bottomRef} style={{ height: "0", margin: 0, padding: 0 }} />
       </div>
 
       <div className="chat-input" style={{ marginTop: "10px"}}>
@@ -283,7 +295,7 @@ function Chat({ roomId, username, onReadReaset }) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();     // 通常送信
+              e.preventDefault();
               handleSend();
             }
           }}
