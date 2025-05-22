@@ -70,10 +70,10 @@ function MessageItem({
   );
 }
 
-function Chat({ roomId, username }) {
+function Chat({ roomId, username, onReadReaset }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [roomName, setRoomName] = useState("チャットルーム");
+  const [roomName, setRoomName] = useState("チャットルーム!");
   const [readStatus, setReadStatus] = useState({});
   const [readersByMessageId, setReadersByMessageId] = useState({});
 
@@ -123,6 +123,28 @@ function Chat({ roomId, username }) {
     fetchReadStatus();
     fetchReaders();
   }, [roomId, username]);
+
+  useEffect(() => {
+  const markAllAsRead = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      await fetch(`http://localhost:8081/mark_all_read?room=${roomId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if(onReadReaset) onReadReaset();
+    } catch (err) {
+      console.error("未読リセット失敗:", err);
+    }
+  };
+
+  if (roomId) {
+    markAllAsRead();
+  }
+}, [roomId]);
+
 
   const sendWhenReady = (messageObj) => {
     const socket = socketRef.current;

@@ -36,6 +36,8 @@ func main() {
 	http.Handle("/read", utils.WithCORS(handlers.MarkAsReadHandler(db)))
 	http.Handle("/read_status", utils.WithCORS(handlers.GetReadStatusHandler(db)))
 	http.Handle("/read_status_full", utils.WithCORS(handlers.GetFullReadStatusHandler(db)))
+	http.Handle("/unread_count", utils.WithCORS(handlers.GetUnreadCountHandler(db)))
+	http.Handle("/mark_all_read", utils.WithCORS(handlers.MarkAllAsReadHandler(db)))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

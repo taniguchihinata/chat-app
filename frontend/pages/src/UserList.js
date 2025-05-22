@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function UserList() {
+function UserList({ reloadFlag}) {
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [privateRoomMap, setPrivateRoomMap] = useState({});
+  const [privateUnreadCounts, setPrivateUnreadCounts] = useState({});
   const navigate = useNavigate();
   
   const myUsername = localStorage.getItem("username");
@@ -46,6 +49,69 @@ function UserList() {
     fetchGroups();
   }, []);
 
+  // 未読件数の再取得（reloadFlagトリガー）
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    const fetchUnreadCounts = async () => {
+      const results = await Promise.all(
+        groups.map(async (group) => {
+          try {
+            const res = await fetch(`http://localhost:8081/unread_count?room=${group.room_id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            return { roomId: group.room_id, count: data.count };
+          } catch {
+            return { roomId: group.room_id, count: 0 };
+          }
+        })
+      );
+      const map = {};
+      results.forEach(({ roomId, count }) => {
+        map[roomId] = count;
+      });
+      setUnreadCounts(map);
+    };
+
+    const fetchPrivateUnread = async () => {
+      const roomMap = {};
+      const countMap = {};
+
+      for (const user of users) {
+        try {
+          const res = await fetch("http://localhost:8081/rooms", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ members: [user.username] }),
+          });
+
+          if (!res.ok) continue;
+
+          const data = await res.json();
+          const roomId = data.room_id;
+          roomMap[user.username] = roomId;
+
+          const countRes = await fetch(`http://localhost:8081/unread_count?room=${roomId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const countData = await countRes.json();
+          countMap[user.username] = countData.count;
+        } catch {}
+      }
+
+      setPrivateRoomMap(roomMap);
+      setPrivateUnreadCounts(countMap);
+    };
+
+    if (groups.length > 0) fetchUnreadCounts();
+    if (users.length > 0) fetchPrivateUnread();
+  }, [reloadFlag, groups, users]);
+
   // チャットルーム作成のハンドラ
   const handleClick = async (partnerUsername) => {
     const token = localStorage.getItem("token");
@@ -81,8 +147,12 @@ function UserList() {
               key={user.id}
               onClick={() => handleClick(user.username)}
               className="user-name"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
             >
-              {user.username}
+              <span>{user.username}</span>
+              {privateUnreadCounts[user.username] > 0 && (
+                <span className="badge">{privateUnreadCounts[user.username]}</span>
+              )}
             </li>
           ))}
       </ul>
@@ -102,9 +172,14 @@ function UserList() {
               key={group.room_id}
               onClick={() => navigate(`/chat/${group.room_id}`)}
               className="user-name"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
             >
-              {group.room_name || "(名前なしのグループ)"}
+              <span>{group.room_name || "(名前なしのグループ)"}</span>
+              {unreadCounts[group.room_id] > 0 && (
+                <span className="badge">{unreadCounts[group.room_id]}</span>
+              )}
             </li>
+
           ))
         }
       </ul>

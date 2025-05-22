@@ -158,3 +158,95 @@ func GetFullReadStatusHandler(db *pgxpool.Pool) http.HandlerFunc {
 		json.NewEncoder(w).Encode(result)
 	}
 }
+
+func GetUnreadCountHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username, err := utils.ParseJWTFromRequest(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		roomIDStr := r.URL.Query().Get("room")
+		roomID, err := strconv.Atoi(roomIDStr)
+		if err != nil {
+			http.Error(w, "Invalid room ID", http.StatusBadRequest)
+			return
+		}
+
+		var userID int
+		err = db.QueryRow(context.Background(),
+			"SELECT id FROM users WHERE username = $1", username,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		// 未読件数の集計クエリ
+		var count int
+		err = db.QueryRow(context.Background(), `
+			SELECT COUNT(*)
+			FROM messages m
+			WHERE m.room_id = $1
+			  AND m.sender_id != $2
+			  AND NOT EXISTS (
+			    SELECT 1 FROM message_reads mr
+			    WHERE mr.message_id = m.id AND mr.user_id = $2
+			  )
+		`, roomID, userID).Scan(&count)
+		if err != nil {
+			http.Error(w, "Failed to count unread", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"count": count})
+	}
+}
+
+func MarkAllAsReadHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		username, err := utils.ParseJWTFromRequest(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		roomIDStr := r.URL.Query().Get("room")
+		roomID, err := strconv.Atoi(roomIDStr)
+		if err != nil {
+			http.Error(w, "Invalid room ID", http.StatusBadRequest)
+			return
+		}
+
+		var userID int
+		err = db.QueryRow(context.Background(),
+			"SELECT id FROM users WHERE username = $1", username,
+		).Scan(&userID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		// まだ既読になっていないメッセージを一括登録
+		_, err = db.Exec(context.Background(), `
+      INSERT INTO message_reads (message_id, user_id)
+      SELECT m.id, $1
+      FROM messages m
+      WHERE m.room_id = $2
+        AND m.sender_id != $1
+        AND NOT EXISTS (
+          SELECT 1 FROM message_reads mr
+          WHERE mr.message_id = m.id AND mr.user_id = $1
+        )
+    `, userID, roomID)
+
+		if err != nil {
+			http.Error(w, "Failed to mark all as read", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
