@@ -39,10 +39,8 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// 自分自身を含めた全メンバーを構成
 		allMembers := append([]string{username}, req.Members...)
 
-		// username → user_id 変換
 		userIDs := []int{}
 		for _, uname := range allMembers {
 			var uid int
@@ -58,7 +56,6 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 		memberCount := len(userIDs)
 		var roomID int
 
-		// ✅ 個別チャット（2人）なら、完全一致で既存ルームを再利用
 		if !req.IsGroup && memberCount == 2 {
 			sort.Ints(userIDs)
 			err := db.QueryRow(context.Background(), `
@@ -77,7 +74,6 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 			}
 		}
 
-		// ✅ グループチャット（3人以上）なら、room_name 重複を禁止
 		if req.IsGroup && memberCount >= 3 && req.Name != "" {
 			var exists bool
 			err := db.QueryRow(context.Background(), `
@@ -92,7 +88,6 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 			}
 		}
 
-		// ✅ 新規ルームを作成
 		err = db.QueryRow(context.Background(),
 			`INSERT INTO chat_rooms (is_group, room_name) VALUES ($1, $2) RETURNING id`,
 			req.IsGroup, req.Name).Scan(&roomID)
@@ -101,7 +96,6 @@ func GetOrCreateRoomHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// ✅ 全メンバーを room_members に登録
 		for _, uid := range userIDs {
 			_, err := db.Exec(context.Background(),
 				`INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)`,
@@ -137,7 +131,7 @@ func GetGroupRoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
 			FROM chat_rooms cr
 			JOIN room_members rm ON cr.id = rm.room_id
 			WHERE cr.is_group = true AND rm.user_id = $1
-			ORDER BY m.created_at ASC
+			ORDER BY cr.created_at ASC
 		`, userID)
 		if err != nil {
 			http.Error(w, "DB取得失敗", http.StatusInternalServerError)
@@ -178,17 +172,15 @@ func RoomsHandler(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-// GET /rooms/{id} - ルーム詳細を取得する
+// GET /rooms/{id}
 func GetRoomDetailHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// JWTで認証確認（値は使わない）
 		_, err := utils.ParseJWTFromRequest(r)
 		if err != nil {
 			http.Error(w, "認証エラー", http.StatusUnauthorized)
 			return
 		}
 
-		// ルームIDの取得
 		roomIDStr := r.URL.Path[len("/rooms/"):]
 		roomID, err := strconv.Atoi(roomIDStr)
 		if err != nil {
@@ -196,7 +188,6 @@ func GetRoomDetailHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// ルームの基本情報取得
 		var isGroup bool
 		var roomName sql.NullString
 		err = db.QueryRow(context.Background(), `
@@ -207,7 +198,6 @@ func GetRoomDetailHandler(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		// メンバー一覧取得（username）
 		rows, err := db.Query(context.Background(), `
 			SELECT u.username FROM users u
 			JOIN room_members rm ON u.id = rm.user_id
@@ -227,7 +217,6 @@ func GetRoomDetailHandler(db *pgxpool.Pool) http.HandlerFunc {
 			}
 		}
 
-		// 自分以外のメンバー名 or グループ名を返す
 		result := map[string]interface{}{
 			"type":    "direct",
 			"users":   members,
