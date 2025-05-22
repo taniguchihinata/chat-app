@@ -120,3 +120,41 @@ func GetReadStatusHandler(db *pgxpool.Pool) http.HandlerFunc {
 		json.NewEncoder(w).Encode(ids)
 	}
 }
+
+// 全メッセージの既読ユーザーを取得
+func GetFullReadStatusHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		roomIDStr := r.URL.Query().Get("room")
+		roomID, err := strconv.Atoi(roomIDStr)
+		if err != nil {
+			http.Error(w, "Invalid room ID", http.StatusBadRequest)
+			return
+		}
+
+		rows, err := db.Query(context.Background(), `
+			SELECT mr.message_id, u.username
+			FROM message_reads mr
+			JOIN users u ON mr.user_id = u.id
+			JOIN messages m ON mr.message_id = m.id
+			WHERE m.room_id = $1
+		`, roomID)
+		if err != nil {
+			log.Printf("read_status_full取得失敗: %v", err)
+			http.Error(w, "Failed to fetch", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		result := make(map[int][]string)
+		for rows.Next() {
+			var msgID int
+			var username string
+			if err := rows.Scan(&msgID, &username); err == nil {
+				result[msgID] = append(result[msgID], username)
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	}
+}
