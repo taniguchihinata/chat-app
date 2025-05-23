@@ -18,7 +18,7 @@ function App() {
   const navigate = useNavigate();//ページ遷移をするときに必要
 
   const [username, setUsername] = useState(null);//今ログインしているユーザー名を保存
-
+  const [reloadFlag, setReloadFlag] = useState(false);
   const showNav = location.pathname === '/' || location.pathname === '/signup';//ログイン画面かサインアップ画面の時のみログイン/サインアップボタンを表示
 
   //ログイン状態チェック
@@ -107,8 +107,25 @@ function App() {
               </RequireAuth>
             }
           />
-        </Routes>
+          <Route
+            path="/chat"
+            element={
+              <RequireAuth>
+                <UserList username={username} reloadFlag={reloadFlag} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat/:roomId"
+            element={
+              <RequireAuth>
+                <ChatPage username={username} onReadReaset={() => setReloadFlag((prev) => !prev)} />
+              </RequireAuth>
+            }
+          />
 
+        </Routes>
+            
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ function ChatPage({ username }) {
         <UserList className="user-list" username={username} reloadFlag={reloadFlag}/>
       </div>
       <div className="chat-area">
-        <Chat roomId={roomId} username={username} onReadReaset={() => setReloadFlag(prev => +1)}/>
+        <Chat roomId={roomId} username={username} onReadReaset={() => setReloadFlag(prev => prev + 1)} />
       </div>
     </div>
   );
