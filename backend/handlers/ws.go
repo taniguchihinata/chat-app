@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/utils"
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"sync"
@@ -20,6 +21,7 @@ type WSMessage struct {
 	Sender    int    `json:"sender_id"`
 	Username  string `json:"username"`
 	MessageID int    `json:"message_id,omitempty"` // 既読通知用
+	FileURL   string `json:"file_url,omitempty"`
 }
 
 type Client struct {
@@ -141,6 +143,17 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 				if err != nil {
 					log.Println("メッセージ保存失敗:", err)
 					continue
+				}
+
+				var fileURL sql.NullString
+				_ = db.QueryRow(context.Background(),
+					"SELECT file_url FROM message_attachments WHERE message_id=$1 LIMIT 1",
+					msg.MessageID,
+				).Scan(&fileURL)
+				if fileURL.Valid {
+					msg.FileURL = fileURL.String
+				} else {
+					msg.FileURL = ""
 				}
 
 				msg.Username = username

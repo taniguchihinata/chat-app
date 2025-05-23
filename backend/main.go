@@ -22,6 +22,8 @@ func main() {
 	}
 	defer db.Close()
 
+	mux := http.NewServeMux()
+
 	//withCORSの中に書いてある関数が動いている感じ
 	http.Handle("/signup", utils.WithCORS(handlers.SignupHandler(db)))
 	http.Handle("/login", utils.WithCORS(handlers.LoginHandler(db)))
@@ -45,6 +47,11 @@ func main() {
 		}
 		handlers.GetRoomDetailHandler(db).ServeHTTP(w, r)
 	})))
+	// アップロード画像公開
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
+	// アップロードAPI
+	mux.HandleFunc("/upload_attachment", handlers.UploadAttachmentHandler(db))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

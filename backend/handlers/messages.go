@@ -4,6 +4,7 @@ package handlers
 import (
 	"backend/utils"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -20,6 +21,7 @@ type Message struct {
 	Username  string `json:"username"`
 	Text      string `json:"text"`
 	CreatedAt string `json:"created_at"`
+	FileURL   string `json:"file_url"`
 }
 
 // 送信リクエスト用構造体
@@ -51,9 +53,10 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		//データベースクエリと整形
 		rows, err := db.Query(
 			context.Background(),
-			`SELECT m.id, m.sender_id, u.username, m.text, m.created_at
+			`SELECT m.id, m.sender_id, u.username, m.text, m.created_at, a.file_url
 			 FROM messages m
 			 JOIN users u ON m.sender_id = u.id
+			 LEFT JOIN message_attachments a ON m.id = a.message_id
 			 WHERE m.room_id = $1
 			 ORDER BY m.created_at ASC`, roomID,
 		)
@@ -68,11 +71,24 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		var messages []Message
 		for rows.Next() {
 			var msg Message
+			var fileURL sql.NullString
 			var createdAt time.Time
-			err := rows.Scan(&msg.ID, &msg.SenderID, &msg.Username, &msg.Text, &createdAt)
+			err := rows.Scan(
+				&msg.ID,
+				&msg.SenderID,
+				&msg.Username,
+				&msg.Text,
+				&createdAt,
+				&fileURL,
+			)
 			if err != nil {
 				log.Println("行スキャン失敗:", err)
 				continue
+			}
+			if fileURL.Valid {
+				msg.FileURL = fileURL.String
+			} else {
+				msg.FileURL = ""
 			}
 			//レスポンス整形と返却
 			msg.CreatedAt = createdAt.Format(time.RFC3339)

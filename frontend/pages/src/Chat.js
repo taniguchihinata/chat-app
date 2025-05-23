@@ -66,7 +66,14 @@ function MessageItem({
 
       <div className="message-content">
         <strong>{msg.username}: </strong>
-        {msg.text}
+        {msg.text && <div>{msg.text}</div>}
+        {msg.file_url && (
+          <img
+          src={`http://localhost:8081${msg.file_url}`}
+          alt="画像"
+          style={{ maxWidth: "200px", marginTop: "6px", borderRadius: "8px"}}
+          />
+        )}
         <div style={{ fontSize: "0.7rem", color: "white", marginTop: "2px" }}>
           {new Date(msg.created_at).toLocaleString("ja-JP", {
             dateStyle: "short",
@@ -84,9 +91,27 @@ function Chat({ roomId, username, onReadReaset }) {
   const [roomName, setRoomName] = useState("チャットルーム!");
   const [readStatus, setReadStatus] = useState({});
   const [readersByMessageId, setReadersByMessageId] = useState({});
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
+
+  const uploadImageAfterMessageSent = async (messageId) => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      await fetch(`http://localhost:8081/upload_attachment?message_id=${messageId}`, {
+        method: "POST",
+        body: formData,
+      });
+      setSelectedFile(null);
+    } catch (err) {
+      console.error("画像アップロード失敗:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchRoomName = async () => {
@@ -254,9 +279,12 @@ function Chat({ roomId, username, onReadReaset }) {
         msg.created_at = new Date().toISOString();
       }
 
-      setMessages((prev) => 
-        Array.isArray(prev) ? [...prev, msg] : [msg]
-      );
+      if (msg.type === "message") {
+        setMessages((prev) => Array.isArray(prev) ? [...prev, msg] : [msg]);
+        if (msg.username === username) {
+          uploadImageAfterMessageSent(msg.id); // ← ここで実行！
+        }       
+      }
     };
 
     return () => {
@@ -353,6 +381,8 @@ function Chat({ roomId, username, onReadReaset }) {
             boxSizing: "border-box",
           }}
         />
+        <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
+
         <button onClick={handleSend}>送信</button>
       </div>
     </div>
