@@ -15,6 +15,8 @@ function MessageItem({
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.6 });
 
   useEffect(() => {
+    if (!msg.id) return;
+
     if (inView && !isMine && !readStatus[msg.id]) {
       const token = localStorage.getItem("token");
 
@@ -163,7 +165,22 @@ function Chat({ roomId, username, onReadReaset }) {
     if (roomId) {
       markAllAsRead();
     }
-  }, [roomId]);
+  }, [roomId, onReadReaset]);
+
+  useEffect(() => {
+  return () => {
+    // クリーンアップ時に「leave」通知
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "leave",
+        room_id: parseInt(roomId),
+        username,
+      }));
+    }
+  };
+}, [roomId, username]);
+
 
   const sendWhenReady = (messageObj) => {
     const socket = socketRef.current;
@@ -194,6 +211,7 @@ function Chat({ roomId, username, onReadReaset }) {
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
+      msg.id = msg.id ?? msg.message_id;
 
       if (msg.type === "read"){
         setReadStatus((prev) => ({
@@ -212,6 +230,11 @@ function Chat({ roomId, username, onReadReaset }) {
           return prev;
         });
 
+        return;
+      }
+
+      if (msg.type === "leave"){
+        console.log(`${msg.username} が退出しました`);
         return;
       }
 
