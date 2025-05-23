@@ -58,12 +58,21 @@ function MessageItem({
     >
       {isMine && readersByMessageId[msg.id]?.length > 0 && (
         <span style={{ fontSize: "0.8rem", color: "gray", margin: "0 6px" }}>
-          既読: {readersByMessageId[msg.id].join(",")}
+          {readersByMessageId[msg.id].length === 1
+            ? "既読"
+            : `既読: ${readersByMessageId[msg.id].length}`}
         </span>
-      )}
+        )}
+
       <div className="message-content">
         <strong>{msg.username}: </strong>
         {msg.text}
+        <div style={{ fontSize: "0.7rem", color: "white", marginTop: "2px" }}>
+          {new Date(msg.created_at).toLocaleString("ja-JP", {
+            dateStyle: "short",
+            timeStyle: "short",
+          })}
+        </div>
       </div>
     </div>
   );
@@ -236,6 +245,10 @@ function Chat({ roomId, username, onReadReaset }) {
       if (msg.type === "leave"){
         console.log(`${msg.username} が退出しました`);
         return;
+      }
+
+      if (!msg.created_at){
+        msg.created_at = new Date().toISOString();
       }
 
       setMessages((prev) => 

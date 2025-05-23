@@ -16,6 +16,7 @@ type WSMessage struct {
 	Type      string `json:"type"` //"message" or "read"
 	RoomID    int    `json:"room_id"`
 	Text      string `json:"text"`
+	Image     string `json:"image,omitempty"`
 	Sender    int    `json:"sender_id"`
 	Username  string `json:"username"`
 	MessageID int    `json:"message_id,omitempty"` // 既読通知用
