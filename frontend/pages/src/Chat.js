@@ -209,6 +209,10 @@ function Chat({ roomId, username, onReadReaset }) {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    if(!token){
+      console.warn("トークンが存在しないため、WebSocket接続を中止します");
+      return ;
+    }
     const ws = new WebSocket(`ws://localhost:8081/ws?token=${token}`);
     socketRef.current = ws;
 
@@ -243,7 +247,6 @@ function Chat({ roomId, username, onReadReaset }) {
       }
 
       if (msg.type === "leave"){
-        console.log(`${msg.username} が退出しました`);
         return;
       }
 
@@ -256,13 +259,18 @@ function Chat({ roomId, username, onReadReaset }) {
       );
     };
 
-    ws.onclose = () => {
-      console.log("WebSocket切断");
-    };
-
     return () => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: "leave",
+        room_id: parseInt(roomId),
+        username,
+      }));
       ws.close();
-    };
+    } else {
+      console.warn("WebSocket未接続のため、leave/send/closeをスキップします。");
+    }
+  };
   }, [roomId]);
 
   useEffect(() => {
