@@ -67,6 +67,11 @@ function MessageItem({
       <div className="message-content">
         <strong>{msg.username}: </strong>
         {msg.text}
+        {msg.image && (
+          <div style={{ marginTop: "4px" }}>
+            <image src={msg.image} alt="添付画像" style={{ maxWidth: "200px", norderRadius: "8px"}} />
+          </div>
+        )}
         <div style={{ fontSize: "0.7rem", color: "white", marginTop: "2px" }}>
           {new Date(msg.created_at).toLocaleString("ja-JP", {
             dateStyle: "short",
@@ -84,10 +89,14 @@ function Chat({ roomId, username, onReadReaset }) {
   const [roomName, setRoomName] = useState("チャットルーム!");
   const [readStatus, setReadStatus] = useState({});
   const [readersByMessageId, setReadersByMessageId] = useState({});
+  const [imageFile, setImageFile] = useState(null);
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
 
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+  }
   useEffect(() => {
     const fetchRoomName = async () => {
       const token = localStorage.getItem("token");
@@ -296,16 +305,41 @@ function Chat({ roomId, username, onReadReaset }) {
     bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!text.trim()) return;
+  const handleSend = async () => {
+    if (!text.trim() && !imageFile) return;
+
+    let imageUrl = "";
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("image", imageFile);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:8081/upload", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          imageUrl = data.file_url;
+        } else {
+          alert("画像アップロードに失敗しました");
+        }
+      } catch (err) {
+        console.error("画像送信エラー:", err);
+      }
+    }
 
     sendWhenReady({
       type: "message",
       room_id: parseInt(roomId),
       text: text.trim(),
+      image: imageUrl,
     });
     setText("");
+    setImageFile(null);
   };
+
 
   return (
     <div className="chat-container">
@@ -331,6 +365,10 @@ function Chat({ roomId, username, onReadReaset }) {
           />
         ))}
         <div ref={bottomRef} style={{ height: "0", margin: 0, padding: 0 }} />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+        <input type="file" accept="image/*" onChange={handleFileChange} />
       </div>
 
       <div className="chat-input" style={{ marginTop: "10px"}}>
