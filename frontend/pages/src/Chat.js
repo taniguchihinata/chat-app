@@ -96,72 +96,73 @@ function Chat({ roomId, username, onReadReaset }) {
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
-  }
-  useEffect(() => {
-    const fetchRoomName = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const res = await fetch(`http://localhost:8081/rooms/${roomId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data && data.name) {
-          setRoomName(data.name);
-        } else if (data && Array.isArray(data.users)) {
-          const partnerName = data.users.find((user) => user !== username);
-          setRoomName(partnerName || "相手未設定");
-        }
-      } catch (err) {
-        console.error("ルーム名取得失敗:", err);
-      }
-    };
-
-    if (roomId) {
-      fetchRoomName();
     }
-  }, [roomId, username]);
-
-  useEffect(() => {
-    if (!roomId || !username) return;
-    const token = localStorage.getItem("token");
-
-    const fetchReadStatus = async () => {
-      try {
-        const res = await fetch(`http://localhost:8081/read_status?room=${roomId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          const readMap = {};
-          data.forEach((id) => {
-            readMap[id] = true;
+    useEffect(() => {
+      const fetchRoomName = async () => {
+        const token = localStorage.getItem("token");
+        try {
+          const res = await fetch(`http://localhost:8081/rooms/${roomId}`, {
+            headers: { Authorization: `Bearer ${token}` },
           });
-          setReadStatus((prev) => ({ ...prev, ...readMap }));
+          const data = await res.json();
+          if (data && data.name) {
+            setRoomName(data.name);
+          } else if (data && Array.isArray(data.users)) {
+            const partnerName = data.users.find((user) => user !== username);
+            setRoomName(partnerName || "相手未設定");
+          }
+        } catch (err) {
+          console.error("ルーム名取得失敗:", err);
         }
-      } catch (err) {
-        console.error("既読状態の取得失敗:", err);
-      }
-    };
+      };
 
-    const fetchReaders = async () => {
-      try {
-        const res = await fetch(`http://localhost:8081/read_status_full?room=${roomId}`, {
-          headers: {
-            Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (data && typeof data === "object") {
-          setReadersByMessageId(data);
-        }
-      } catch (err) {
-        console.error("既読ユーザー一覧取得失敗:", err);
+      if (roomId) {
+        fetchRoomName();
       }
-    };
+    }, [roomId, username]);
+
+    useEffect(() => {
+      if (!roomId || !username) return;
+      const token = localStorage.getItem("token");
+
+      const fetchReadStatus = async () => {
+        try {
+          const res = await fetch(`http://localhost:8081/read_status?room=${roomId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const readMap = {};
+            data.forEach((id) => {
+              readMap[id] = true;
+            });
+            setReadStatus((prev) => ({ ...prev, ...readMap }));
+          }
+        } catch (err) {
+          console.error("既読状態の取得失敗:", err);
+        }
+      };
+
+      const fetchReaders = async () => {
+        try {
+          const res = await fetch(`http://localhost:8081/read_status_full?room=${roomId}`, {
+            headers: {
+            Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (data && typeof data === "object") {
+            setReadersByMessageId(data);
+          }
+        } catch (err) {
+          console.error("既読ユーザー一覧取得失敗:", err);
+        }
+      };
 
     fetchReadStatus();
     fetchReaders();
@@ -341,6 +342,9 @@ function Chat({ roomId, username, onReadReaset }) {
     });
     setText("");
     setImageFile(null);
+    if (fileInputRef.current){
+      fileInputRef.current.value = "";
+    }
   };
 
 

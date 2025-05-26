@@ -46,7 +46,7 @@ func main() {
 		handlers.GetRoomDetailHandler(db).ServeHTTP(w, r)
 	})))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
-	http.Handle("/upload", utils.WithCORS(handlers.UploadImageHandler))
+	http.Handle("/upload", utils.WithCORS(handlers.UploadHandler(db)))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))
