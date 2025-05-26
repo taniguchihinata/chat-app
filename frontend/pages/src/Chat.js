@@ -69,7 +69,10 @@ function MessageItem({
         {msg.text}
         {msg.image && (
           <div style={{ marginTop: "4px" }}>
-            <image src={msg.image} alt="添付画像" style={{ maxWidth: "200px", norderRadius: "8px"}} />
+            <img 
+            src={`http://localhost:8081${msg.image}`} 
+            alt="添付画像" 
+            style={{ maxWidth: "200px", norderRadius: "8px"}} />
           </div>
         )}
         <div style={{ fontSize: "0.7rem", color: "white", marginTop: "2px" }}>

@@ -131,8 +131,6 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 					continue
 				}
 
-				originalText := msg.Text
-
 				err = db.QueryRow(context.Background(),
 					`INSERT INTO messages (room_id, sender_id, text, created_at)
 					 VALUES ($1, $2, $3, now()) RETURNING id`,
@@ -143,8 +141,20 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 					continue
 				}
 
+				if msg.Image != "" {
+					_, err := db.Exec(context.Background(),
+						`INSERT INTO message_attachments (message_id, file_url, created_at)
+			 			VALUES ($1, $2, now())`,
+						msg.MessageID, msg.Image,
+					)
+					if err != nil {
+						log.Println("画像の保存失敗:", err)
+					} else {
+						log.Printf("画像URLをmessage_attachmentsに保存: message_id=%d, url=%s", msg.MessageID, msg.Image)
+					}
+				}
+
 				msg.Username = username
-				msg.Text = originalText
 
 				mu.Lock()
 				for _, c := range roomClients[msg.RoomID] {

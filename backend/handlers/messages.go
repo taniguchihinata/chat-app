@@ -20,6 +20,7 @@ type Message struct {
 	Username  string `json:"username"`
 	Text      string `json:"text"`
 	CreatedAt string `json:"created_at"`
+	Image     string `json:"image,omitempty"`
 }
 
 // 送信リクエスト用構造体
@@ -51,9 +52,10 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		//データベースクエリと整形
 		rows, err := db.Query(
 			context.Background(),
-			`SELECT m.id, m.sender_id, u.username, m.text, m.created_at
+			`SELECT m.id, m.sender_id, u.username, m.text,COALESCE(a.file_url, '') as image, m.created_at
 			 FROM messages m
 			 JOIN users u ON m.sender_id = u.id
+			 LEFT JOIN message_attachments a ON m.id = a.message_id
 			 WHERE m.room_id = $1
 			 ORDER BY m.created_at ASC`, roomID,
 		)
@@ -69,7 +71,7 @@ func GetMessagesHandler(db *pgxpool.Pool) http.HandlerFunc {
 		for rows.Next() {
 			var msg Message
 			var createdAt time.Time
-			err := rows.Scan(&msg.ID, &msg.SenderID, &msg.Username, &msg.Text, &createdAt)
+			err := rows.Scan(&msg.ID, &msg.SenderID, &msg.Username, &msg.Text, &msg.Image, &createdAt)
 			if err != nil {
 				log.Println("行スキャン失敗:", err)
 				continue
