@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"regexp"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -141,6 +142,8 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 					continue
 				}
 
+				insertMentions(db, msg.MessageID, msg.Text)
+
 				if msg.Image != "" {
 					_, err := db.Exec(context.Background(),
 						`INSERT INTO message_attachments (message_id, file_url, created_at)
@@ -175,5 +178,32 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 		mu.Unlock()
 
 		log.Println("WebSocket切断")
+	}
+}
+
+func insertMentions(db *pgxpool.Pool, messageID int, messageText string) {
+	re := regexp.MustCompile(`@([\p{L}\p{N}_\-\p{Han}\p{Hiragana}\p{Katakana}ー一-龯ぁ-んァ-ン]+)`)
+	matches := re.FindAllStringSubmatch(messageText, -1)
+
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue
+		}
+		username := match[1]
+
+		var targetUserID int
+		err := db.QueryRow(context.Background(),
+			"SELECT id FROM users WHERE username = $1", username).Scan(&targetUserID)
+		if err != nil {
+			log.Println("ユーザー名からID取得失敗:", username, err)
+			continue
+		}
+
+		_, err = db.Exec(context.Background(),
+			"INSERT INTO mentions (message_id, mention_target_id) VALUES ($1, $2)",
+			messageID, targetUserID)
+		if err != nil {
+			log.Println("mentions テーブルへのINSERT失敗:", err)
+		}
 	}
 }

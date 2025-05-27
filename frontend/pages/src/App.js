@@ -107,7 +107,7 @@ const handleNotificationClick = (roomId, messageId) => {
         ) : (
           <div style={{ display: "flex", gap: "12px" }}>
             <button onClick={handleLogout}>ログアウト</button>
-            <span>ログイン中: {username}</span>
+            <span style={{color: "white"}}>ログイン中: {username}</span>
           </div>
         )}
 
@@ -140,11 +140,24 @@ const handleNotificationClick = (roomId, messageId) => {
                     <div
                       key={n.message_id}
                       onClick={() => handleNotificationClick(n.room_id, n.message_id)}
-                      style={{ padding: "6px", borderBottom: "1px solid #eee", cursor: "pointer" }}
+                      style={{
+                        padding: "6px",
+                        borderBottom: "1px solid #eee",
+                        cursor: "pointer",
+                        fontWeight: n.is_read ? "normal" : "bold", // 未読は太字に
+                        color: "black"
+                      }}
                     >
-                      <strong>{n.sender_name}</strong>: {n.text}<br />
-                      <small>{new Date(n.created_at).toLocaleString("ja-JP")}</small>
-                    </div>
+                      <strong>{n.sender_name}</strong>:<br />
+                      {n.text ? (
+                        <span>{n.text}</span>
+                      ) : (
+                        <span style={{ color: "#888" }}>[画像または空のメッセージ]</span>
+                        )}
+                        <br />
+                        <small>{new Date(n.created_at).toLocaleString("ja-JP")}</small>
+                      </div>
+
                   ))
                 )}
               </div>

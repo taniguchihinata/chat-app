@@ -48,6 +48,8 @@ func main() {
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	http.Handle("/upload", utils.WithCORS(handlers.UploadHandler(db)))
 	http.Handle("/stamps/", http.StripPrefix("/stamps/", http.FileServer(http.Dir("./stamps"))))
+	http.Handle("/mentions", utils.WithCORS(handlers.GetMentionsHandler(db)))
+	http.Handle("/mentions/read", utils.WithCORS(handlers.MarkMentionAsReadHandler(db)))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

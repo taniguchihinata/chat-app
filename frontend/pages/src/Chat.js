@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
+import { useLocation } from "react-router-dom";
 
 function MessageItem({ 
   msg,
@@ -9,10 +10,18 @@ function MessageItem({
   readStatus,
   setReadStatus,
   sendWhenReady,
-  readersByMessageId
+  readersByMessageId,
+  scrollRefs
 }) {
   const isMine = msg.username === username;
-  const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.6 });
+  const localRef = useRef(null);
+  const [inViewRef, inView] = useInView({ triggerOnce: true, threshold: 0.6});
+
+  useEffect(() => {
+    if (msg.id && scrollRefs?.current) {
+      scrollRefs.current[msg.id] = localRef.current;
+    }
+  }, [msg.id, scrollRefs]);
 
   useEffect(() => {
     if (!msg.id) return;
@@ -45,7 +54,7 @@ function MessageItem({
 
   return (
     <div
-      ref={ref}
+    ref={inViewRef}
       key={msg.id}
       className={isMine ? "my-message" : "other-message"}
       style={{
@@ -93,7 +102,11 @@ function Chat({ roomId, username, onReadReaset }) {
   const [readStatus, setReadStatus] = useState({});
   const [readersByMessageId, setReadersByMessageId] = useState({});
   const [imageFile, setImageFile] = useState(null);
-
+  
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const scrollToId = searchParams.get("scrollTo"); // 例: "123"
+  const scrollRefs = useRef({});
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -291,7 +304,7 @@ function Chat({ roomId, username, onReadReaset }) {
       console.warn("WebSocket未接続のため、leave/send/closeをスキップします。");
     }
   };
-  }, [roomId]);
+  }, [roomId, username]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -311,6 +324,17 @@ function Chat({ roomId, username, onReadReaset }) {
     };
     fetchMessages();
   }, [roomId]);
+
+  useEffect(() => {
+    if (scrollToId && scrollRefs.current[scrollToId]) {
+      setTimeout(() => {
+        scrollRefs.current[scrollToId]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, [messages, scrollToId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
@@ -384,6 +408,7 @@ function Chat({ roomId, username, onReadReaset }) {
             setReadStatus={setReadStatus}
             sendWhenReady={sendWhenReady}
             readersByMessageId={readersByMessageId}
+            scrollRefs={scrollRefs}
           />
         ))}
         <div ref={bottomRef} style={{ height: "0", margin: 0, padding: 0 }} />

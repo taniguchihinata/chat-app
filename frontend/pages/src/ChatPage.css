@@ -41,7 +41,7 @@ html, body, .App {
 nav {
   flex-shrink: 0; /* 高さを固定（上部に残す） */
   padding: 16px;
-  color: #fff;
+  /*color: #fff;*/
   background-color: #ff7700;
   border-bottom: 1px solid #ccc;
   /*border-radius: 20px;*/
