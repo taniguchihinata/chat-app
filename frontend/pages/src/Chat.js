@@ -97,6 +97,13 @@ function Chat({ roomId, username, onReadReaset }) {
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
+  const STAMP_LIST = [
+    "/stamps/smile.png",
+    "/stamps/angry.png",
+    "/stamps/love.png",
+    "/stamps/laugh.png",
+  ];
+
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -347,6 +354,16 @@ function Chat({ roomId, username, onReadReaset }) {
     }
   };
 
+  const handleStampSend = (stampUrl) => {
+    sendWhenReady({
+      type: "message",
+      room_id: parseInt(roomId),
+      text: "",           // スタンプなのでテキストなし
+      image: stampUrl,    // スタンプの画像URLを image として送信
+    });
+  };
+
+
 
   return (
     <div className="chat-container">
@@ -375,8 +392,25 @@ function Chat({ roomId, username, onReadReaset }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef}
+          onChange={handleFileChange} />
       </div>
+
+      <div style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+        {STAMP_LIST.map((url, idx) => (
+          <img
+            key={idx}
+            src={`http://localhost:8081${url}`}
+            alt={`stamp-${idx}`}
+            onClick={() => handleStampSend(url)}
+            style={{ width: "40px", height: "40px", cursor: "pointer" }}
+          />
+        ))}
+      </div>
+
 
       <div className="chat-input" style={{ marginTop: "10px"}}>
         <textarea
