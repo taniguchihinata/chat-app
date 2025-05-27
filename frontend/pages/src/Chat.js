@@ -363,8 +363,6 @@ function Chat({ roomId, username, onReadReaset }) {
     });
   };
 
-
-
   return (
     <div className="chat-container">
       <div className="chat-header">

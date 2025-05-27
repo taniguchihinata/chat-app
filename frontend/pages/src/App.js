@@ -21,6 +21,10 @@ function App() {
   const [reloadFlag, setReloadFlag] = useState(false);
   const showNav = location.pathname === '/' || location.pathname === '/signup';//ログイン画面かサインアップ画面の時のみログイン/サインアップボタンを表示
 
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   //ログイン状態チェック
   useEffect(() => {
     const token = localStorage.getItem("token");//セッションからJWTトークンを取得
@@ -57,24 +61,98 @@ function App() {
     navigate("/");
   };
 
+  //通知一覧を取得
+  useEffect(() => {
+  if (!username) return;
+  const fetchMentions = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://localhost:8081/mentions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setNotifications(data);
+        setUnreadCount(data.length);
+      }
+    } catch (err) {
+      console.error("通知取得失敗:", err);
+    }
+  };
+
+  fetchMentions();
+}, [username]);
+
+const handleNotificationClick = (roomId, messageId) => {
+  navigate(`/chat/${roomId}?scrollTo=${messageId}`);
+  setShowNotifications(false);
+};
+
   //画面に表示される部分
   return (
     <div className="App">
-      <nav>
+      <nav style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px",
+        position: "relative"
+      }}>
+        {/* 左ブロック：ロゴやリンク */}
         {showNav ? (
-          <>
+          <div style={{ display: "flex", gap: "12px" }}>
             <Link to="/signup"><button>サインアップへ</button></Link>
             <Link to="/"><button>ログインへ</button></Link>
-          </>
+          </div>
         ) : (
-          username && (
-            <>
-              <span>ログイン中: {username}</span>
-              <button onClick={handleLogout}>ログアウト</button>
-            </>
-          )
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button onClick={handleLogout}>ログアウト</button>
+            <span>ログイン中: {username}</span>
+          </div>
+        )}
+
+        {/* 右ブロック：通知アイコン（常に右端） */}
+        {!showNav && username && (
+          <div style={{ position: "absolute", right: "10px", top: "10px" }}>
+            <button onClick={() => setShowNotifications(!showNotifications)} style={{ fontSize: "1.4em", position: "relative" }}>
+              🔔
+              {unreadCount > 0 && (
+                <span style={{
+                  position: "absolute", top: "-6px", right: "-6px",
+                  background: "red", color: "white", borderRadius: "50%",
+                  fontSize: "10px", padding: "2px 6px"
+                }}>{unreadCount}</span>
+              )}
+            </button>
+
+            {/* 通知ポップアップ */}
+            {showNotifications && (
+              <div style={{
+                position: "absolute", top: "35px", right: "0",
+                width: "300px", maxHeight: "300px", overflowY: "auto",
+                background: "white", border: "1px solid #ccc", borderRadius: "8px",
+                padding: "10px", zIndex: 1000
+              }}>
+                {notifications.length === 0 ? (
+                  <div style={{ color: "#666" }}>メンションはありません</div>
+                ) : (
+                  notifications.map(n => (
+                    <div
+                      key={n.message_id}
+                      onClick={() => handleNotificationClick(n.room_id, n.message_id)}
+                      style={{ padding: "6px", borderBottom: "1px solid #eee", cursor: "pointer" }}
+                    >
+                      <strong>{n.sender_name}</strong>: {n.text}<br />
+                      <small>{new Date(n.created_at).toLocaleString("ja-JP")}</small>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         )}
       </nav>
+
 
       <div className="main-content">{/*それぞれのシステムへのルーティング*/}
         <Routes>
