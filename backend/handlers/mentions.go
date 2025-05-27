@@ -4,6 +4,7 @@ import (
 	"backend/utils"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -56,11 +57,14 @@ func GetMentionsHandler(db *pgxpool.Pool) http.HandlerFunc {
 			var m MentionResponse
 			var created time.Time
 			var isRead bool
-			if err := rows.Scan(&m.MessageID, &m.RoomID, &m.Text, &created, &m.SenderName, &m.IsRead); err == nil {
-				m.CreatedAt = created.Format(time.RFC3339)
-				m.IsRead = isRead
-				mentions = append(mentions, m)
+			if err := rows.Scan(&m.MessageID, &m.RoomID, &m.Text, &created, &m.SenderName, &isRead); err != nil {
+				log.Println("Scan失敗:", err)
+				http.Error(w, "DB scan error", http.StatusInternalServerError)
+				return
 			}
+			m.CreatedAt = created.Format(time.RFC3339)
+			m.IsRead = isRead
+			mentions = append(mentions, m)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -70,36 +74,7 @@ func GetMentionsHandler(db *pgxpool.Pool) http.HandlerFunc {
 
 func MarkMentionAsReadHandler(db *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username, err := utils.ParseJWTFromRequest(r)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		var userID int
-		err = db.QueryRow(context.Background(),
-			"SELECT id FROM users WHERE username=$1", username).Scan(&userID)
-		if err != nil {
-			http.Error(w, "ユーザー取得失敗", http.StatusInternalServerError)
-			return
-		}
-
-		var req struct {
-			MessageID int `json:"message_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "無効なリクエスト", http.StatusBadRequest)
-			return
-		}
-
-		_, err = db.Exec(context.Background(),
-			"UPDATE mentions SET is_read = TRUE WHERE mention_target_id=$1 AND message_id=$2",
-			userID, req.MessageID)
-		if err != nil {
-			http.Error(w, "更新失敗", http.StatusInternalServerError)
-			return
-		}
-
+		// mentions テーブルは is_read を持たないので処理は不要
 		w.WriteHeader(http.StatusOK)
 	}
 }

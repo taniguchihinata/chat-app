@@ -83,7 +83,22 @@ function App() {
   fetchMentions();
 }, [username]);
 
-const handleNotificationClick = (roomId, messageId) => {
+const handleNotificationClick = async (roomId, messageId) => {
+  const token = localStorage.getItem("token");
+
+  // ✅ 既読API呼び出し
+  try {
+    await fetch("http://localhost:8081/mentions/read", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message_id: messageId }),
+    });
+  } catch (err) {
+    console.error("通知既読化失敗:", err);
+  }
   navigate(`/chat/${roomId}?scrollTo=${messageId}`);
   setShowNotifications(false);
 };
