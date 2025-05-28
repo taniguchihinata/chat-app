@@ -159,7 +159,7 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 					continue
 				}
 
-				insertMentions(db, msg.MessageID, msg.Text)
+				insertMentions(db, msg.MessageID, msg.Text, username)
 
 				if msg.Image != "" {
 					_, err := db.Exec(context.Background(),
@@ -198,7 +198,7 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func insertMentions(db *pgxpool.Pool, messageID int, messageText string) {
+func insertMentions(db *pgxpool.Pool, messageID int, messageText string, senderUsername string) {
 	re := regexp.MustCompile(`@([\p{L}\p{N}_\-\p{Han}\p{Hiragana}\p{Katakana}ー一-龯ぁ-んァ-ン]+)`)
 	matches := re.FindAllStringSubmatch(messageText, -1)
 
@@ -208,6 +208,10 @@ func insertMentions(db *pgxpool.Pool, messageID int, messageText string) {
 		}
 		username := match[1]
 
+		if username == senderUsername {
+			log.Printf("自己メンション検出、スキップ: %s", username)
+			continue
+		}
 		var targetUserID int
 		err := db.QueryRow(context.Background(),
 			"SELECT id FROM users WHERE username = $1", username).Scan(&targetUserID)

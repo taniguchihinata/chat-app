@@ -63,6 +63,10 @@ function CreateGroup() {
 
   return (
     <div style={{ padding: "1rem" }}>
+      <button onClick={() => navigate("/chat")} style={{ marginRight: "10px", }}>
+      チャットに戻る
+      </button>
+      
       <h2>グループチャット作成</h2>
 
       {/* グループ名の入力欄 */}

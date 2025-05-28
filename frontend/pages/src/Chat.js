@@ -91,7 +91,24 @@ function MessageItem({
                   <img
                     src={`http://localhost:8081${msg.image}`}
                     alt="添付画像"
-                    style={{ maxWidth: "200px", borderRadius: "8px" }}
+                    style={{
+                      width: msg.image.startsWith("/stamps/")
+                        ? "80px"
+                        : "auto",
+                      height: msg.image.startsWith("/stamps/")
+                        ? "80px"
+                        : "auto",
+                      maxWidth: msg.image.startsWith("/stamps/")
+                        ? "none"
+                        : "200px",
+                      borderRadius: msg.image.startsWith("/stamps/")
+                        ? "0px"
+                        : "8px",
+                      backgroundColor: msg.image.startsWith("/stamps/")
+                        ? "transparent"
+                        : undefined,
+                      objectFit: "contain",
+                    }}
                   />
                 </div>
               )}
@@ -582,7 +599,7 @@ function Chat({ roomId, username, onReadReaset }) {
             src={`http://localhost:8081${url}`}
             alt={`stamp-${idx}`}
             onClick={() => handleStampSend(url)}
-            style={{ width: "40px", height: "40px", cursor: "pointer" }}
+            style={{ width: "25px", height: "25px", cursor: "pointer" }}
           />
         ))}
       </div>
