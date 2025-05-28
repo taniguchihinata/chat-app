@@ -415,7 +415,7 @@ function Chat({ roomId, username, onReadReaset }) {
 
       if (msg.type === "delete") {
         setMessages((prev) =>
-          prev.filter((m) => m.id !== msg.message_id)
+          prev.map((m) => m.id !== msg.message_id ? { ...m, deleted: true} : m)
         );
         return;
       }
