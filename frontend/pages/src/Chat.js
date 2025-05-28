@@ -193,32 +193,60 @@ function Chat({ roomId, username, onReadReaset }) {
 
   const handleDelete = async (messageId) => {
     const token = localStorage.getItem("token");
+
+    // 対象メッセージを取得
+    const targetMsg = messages.find((m) => m.id === messageId);
+    if (!targetMsg) return;
+
+    const createdTime = new Date(targetMsg.created_at).getTime();
+    const now = Date.now();
+    const within60s = now - createdTime < 60 * 1000;
+
     try {
-      const res = await fetch(`http://localhost:8081/messages/${messageId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ deleted: true }),
-      });
-      if (!res.ok) throw new Error("削除失敗");
+      if (within60s) {
+        // 送信取り消し（物理削除）
+        const res = await fetch(`http://localhost:8081/messages/${messageId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("送信取り消し失敗");
 
-      sendWhenReady({
-        type: "delete",
-        room_id: parseInt(roomId),
-        message_id: messageId,
-      });
+        sendWhenReady({
+          type: "delete",
+          room_id: parseInt(roomId),
+          message_id: messageId,
+        });
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId ? { ...msg, deleted: true } : msg
-        )
-      );
+        setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      } else {
+        // 通常の削除（論理削除）
+        const res = await fetch(`http://localhost:8081/messages/${messageId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ deleted: true }),
+        });
+        if (!res.ok) throw new Error("削除失敗");
+
+        sendWhenReady({
+          type: "delete",
+          room_id: parseInt(roomId),
+          message_id: messageId,
+        });
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId ? { ...msg, deleted: true } : msg
+          )
+        );
+      }
     } catch (err) {
-      console.error("削除エラー:", err);
+      console.error("削除処理エラー:", err);
     }
   };
+
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -387,9 +415,7 @@ function Chat({ roomId, username, onReadReaset }) {
 
       if (msg.type === "delete") {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === msg.message_id ? { ...m, deleted: true } : m
-          )
+          prev.filter((m) => m.id !== msg.message_id)
         );
         return;
       }
@@ -448,9 +474,13 @@ function Chat({ roomId, username, onReadReaset }) {
     }
   }, [messages, scrollToId]);
 
+  const prevMessageCountRef = useRef(0);
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [messages]);
+    if (messages.length > prevMessageCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+    }
+  prevMessageCountRef.current = messages.length;  }, [messages]);
 
   const handleSend = async () => {
     if (!text.trim() && !imageFile) return;
