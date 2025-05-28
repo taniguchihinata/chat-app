@@ -2,7 +2,7 @@ html, body, .App {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* 全体スクロール無効化 */
+  overflow: auto; /* 全体スクロール無効化 */
 }
 
 .chat-page {
@@ -14,12 +14,12 @@ html, body, .App {
 }
 
 .user-list {
-  height: 100%;
-  width: 100vw;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 20%;
   border-right: 1px solid #ccc;
   padding: 10px;
-  overflow-y: auto;
-  background-color:   #a936c9;
   border-radius: 30px;
 }
 
@@ -28,7 +28,7 @@ html, body, .App {
   display: flex;
   flex-direction: column;
   padding: 10px;
-  overflow: hidden; /* ここ重要！ */
+  overflow: auto; 
   min-height: 0;
 } 
 
