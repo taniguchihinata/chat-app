@@ -11,11 +11,14 @@ function MessageItem({
   setReadStatus,
   sendWhenReady,
   readersByMessageId,
-  scrollRefs
+  scrollRefs,
+  onUndo,
+  onDelete
 }) {
   const isMine = msg.username === username;
   const localRef = useRef(null);
   const [inViewRef, inView] = useInView({ triggerOnce: true, threshold: 0.6});
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     if (msg.id && scrollRefs?.current) {
@@ -54,42 +57,92 @@ function MessageItem({
 
   return (
     <div
-    ref={inViewRef}
+      ref={inViewRef}
       key={msg.id}
-      className={isMine ? "my-message" : "other-message"}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        textAlign: isMine ? "right" : "left",
-        marginBottom: "4px",
         display: "flex",
-        flexDirection: isMine ? "row-reverse" : "row",
-        alignItems: "center",
+        justifyContent: isMine ? "flex-end" : "flex-start",
+        marginBottom: "8px",
       }}
     >
-      {isMine && readersByMessageId[msg.id]?.length > 0 && (
-        <span style={{ fontSize: "0.8rem", color: "gray", margin: "0 6px" }}>
-          {readersByMessageId[msg.id].length === 1
-            ? "既読"
-            : `既読: ${readersByMessageId[msg.id].length}`}
-        </span>
-        )}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          background: isMine ? "#d1f0ff" : "#f0f0f0",
+          borderRadius: "8px",
+          padding: "6px 10px",
+          maxWidth: "80%",
+        }}
+      >
+        {/* メッセージ内容 */}
+        <div>
+          {msg.deleted ? (
+            <em style={{ color: "gray" }}>このメッセージは削除されました</em>
+          ) : (
+            <>
+              <strong>{msg.username}: </strong>
+              {msg.text}
+              {msg.image && (
+                <div style={{ marginTop: "4px" }}>
+                  <img
+                    src={`http://localhost:8081${msg.image}`}
+                    alt="添付画像"
+                    style={{ maxWidth: "200px", borderRadius: "8px" }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+          <div style={{ fontSize: "0.7rem", color: "gray", marginTop: "2px" }}>
+            {new Date(msg.created_at).toLocaleString("ja-JP", {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+            {isMine && readersByMessageId[msg.id]?.length > 0 && (
+              <span style={{ marginLeft: "8px", color: "gray" }}>
+                {readersByMessageId[msg.id].length === 1
+                  ? "既読"
+                  : `既読: ${readersByMessageId[msg.id].length}`}
+              </span>
+            )}
+          </div>
+        </div>
 
-      <div className="message-content">
-        <strong>{msg.username}: </strong>
-        {msg.text}
-        {msg.image && (
-          <div style={{ marginTop: "4px" }}>
-            <img 
-            src={`http://localhost:8081${msg.image}`} 
-            alt="添付画像" 
-            style={{ maxWidth: "200px", norderRadius: "8px"}} />
+        {/* 操作ボタン */}
+        {isMine && hovered && !msg.deleted && (
+          <div style={{ marginLeft: "10px", display: "flex", gap: "6px" }}>
+            {Date.now() - new Date(msg.created_at).getTime() < 60 * 1000 && (
+              <button
+                onClick={() => onUndo(msg.id)}
+                style={{
+                  fontSize: "0.7rem",
+                  background: "none",
+                  border: "none",
+                  color: "blue",
+                  cursor: "pointer",
+                }}
+              >
+                取り消し
+              </button>
+            )}
+            <button
+              onClick={() => onDelete(msg.id)}
+              style={{
+                fontSize: "0.7rem",
+                background: "none",
+                border: "none",
+                color: "red",
+                cursor: "pointer",
+              }}
+            >
+              削除
+            </button>
           </div>
         )}
-        <div style={{ fontSize: "0.7rem", color: "white", marginTop: "2px" }}>
-          {new Date(msg.created_at).toLocaleString("ja-JP", {
-            dateStyle: "short",
-            timeStyle: "short",
-          })}
-        </div>
       </div>
     </div>
   );
@@ -117,6 +170,55 @@ function Chat({ roomId, username, onReadReaset }) {
     "/stamps/laugh.png",
   ];
 
+  const handleUndo = async (messageId) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:8081/messages/${messageId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("削除失敗");
+
+      sendWhenReady({
+        type: "delete",
+        room_id: parseInt(roomId),
+        message_id: messageId,
+      });
+
+      setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+    } catch (err) {
+      console.error("送信取り消しエラー:", err);
+    }
+  };
+
+  const handleDelete = async (messageId) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`http://localhost:8081/messages/${messageId}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deleted: true }),
+      });
+      if (!res.ok) throw new Error("削除失敗");
+
+      sendWhenReady({
+        type: "delete",
+        room_id: parseInt(roomId),
+        message_id: messageId,
+      });
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, deleted: true } : msg
+        )
+      );
+    } catch (err) {
+      console.error("削除エラー:", err);
+    }
+  };
 
   const handleFileChange = (e) => {
     setImageFile(e.target.files[0]);
@@ -283,6 +385,16 @@ function Chat({ roomId, username, onReadReaset }) {
         return;
       }
 
+      if (msg.type === "delete") {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msg.message_id ? { ...m, deleted: true } : m
+          )
+        );
+        return;
+      }
+
+
       if (!msg.created_at){
         msg.created_at = new Date().toISOString();
       }
@@ -385,6 +497,9 @@ function Chat({ roomId, username, onReadReaset }) {
       text: "",           // スタンプなのでテキストなし
       image: stampUrl,    // スタンプの画像URLを image として送信
     });
+
+  
+
   };
 
   return (
@@ -409,6 +524,8 @@ function Chat({ roomId, username, onReadReaset }) {
             sendWhenReady={sendWhenReady}
             readersByMessageId={readersByMessageId}
             scrollRefs={scrollRefs}
+            onUndo={handleUndo}
+            onDelete={handleDelete}
           />
         ))}
         <div ref={bottomRef} style={{ height: "0", margin: 0, padding: 0 }} />

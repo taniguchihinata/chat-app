@@ -42,6 +42,7 @@ func GetMentionsHandler(db *pgxpool.Pool) http.HandlerFunc {
   			FROM mentions m
   			JOIN messages msg ON m.message_id = msg.id
   			JOIN users u ON msg.sender_id = u.id
+			JOIN room_members rm ON rm.room_id = msg.room_id AND rm.user_id = $1
   			LEFT JOIN message_reads r ON r.message_id = m.message_id AND r.user_id = $1
   			WHERE m.mention_target_id = $1
   			ORDER BY msg.created_at DESC

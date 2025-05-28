@@ -120,6 +120,19 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 				mu.Unlock()
 				continue
 
+			case "delete":
+				log.Printf("削除通知: message_id=%d", msg.MessageID)
+
+				mu.Lock()
+				for _, c := range roomClients[msg.RoomID] {
+					_ = c.Conn.WriteJSON(map[string]interface{}{
+						"type":       "delete",
+						"room_id":    msg.RoomID,
+						"message_id": msg.MessageID,
+					})
+				}
+				mu.Unlock()
+
 			case "message":
 				log.Printf("ルーム%d: %s", msg.RoomID, msg.Text)
 

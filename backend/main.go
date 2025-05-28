@@ -50,6 +50,16 @@ func main() {
 	http.Handle("/stamps/", http.StripPrefix("/stamps/", http.FileServer(http.Dir("./stamps"))))
 	http.Handle("/mentions", utils.WithCORS(handlers.GetMentionsHandler(db)))
 	http.Handle("/mentions/read", utils.WithCORS(handlers.MarkMentionAsReadHandler(db)))
+	http.Handle("/messages/", utils.WithCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPatch:
+			handlers.PatchMessageHandler(db).ServeHTTP(w, r)
+		case http.MethodDelete:
+			handlers.DeleteMessageHandler(db).ServeHTTP(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})))
 
 	log.Println("サーバー起動: http://localhost:8081")
 	log.Fatal(http.ListenAndServe(":8081", nil))

@@ -73,7 +73,8 @@ function App() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setNotifications(data);
-        setUnreadCount(data.length);
+        const unread = data.filter(n => !n.is_read).length;
+        setUnreadCount(unread);
       }
     } catch (err) {
       console.error("通知取得失敗:", err);
@@ -82,6 +83,13 @@ function App() {
 
   fetchMentions();
 }, [username]);
+
+useEffect(() => {
+  if (showNotifications) {
+    setUnreadCount(0);  // 通知が開かれた瞬間に未読数を0に
+  }
+}, [showNotifications]);
+
 
 const handleNotificationClick = async (roomId, messageId) => {
   const token = localStorage.getItem("token");
