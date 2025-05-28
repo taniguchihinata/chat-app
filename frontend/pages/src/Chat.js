@@ -72,7 +72,7 @@ function MessageItem({
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
-          background: isMine ? "#d1f0ff" : "#f0f0f0",
+          background: isMine ? "#ffe8cc" : "#f0f0f0",
           borderRadius: "8px",
           padding: "6px 10px",
           maxWidth: "80%",
@@ -91,25 +91,20 @@ function MessageItem({
                   <img
                     src={`http://localhost:8081${msg.image}`}
                     alt="添付画像"
+                    onLoad={() => {
+                      const el = document.getElementById("bottom-ref");
+                      el?.scrollIntoView({ behavior: "smooth", block: "end" });
+                    }}
                     style={{
-                      width: msg.image.startsWith("/stamps/")
-                        ? "80px"
-                        : "auto",
-                      height: msg.image.startsWith("/stamps/")
-                        ? "80px"
-                        : "auto",
-                      maxWidth: msg.image.startsWith("/stamps/")
-                        ? "none"
-                        : "200px",
-                      borderRadius: msg.image.startsWith("/stamps/")
-                        ? "0px"
-                        : "8px",
-                      backgroundColor: msg.image.startsWith("/stamps/")
-                        ? "transparent"
-                        : undefined,
+                      width: msg.image.startsWith("/stamps/") ? "80px" : "auto",
+                      height: msg.image.startsWith("/stamps/") ? "80px" : "auto",
+                      maxWidth: msg.image.startsWith("/stamps/") ? "none" : "200px",
+                      borderRadius: msg.image.startsWith("/stamps/") ? "0px" : "8px",
+                      backgroundColor: msg.image.startsWith("/stamps/") ? "transparent" : undefined,
                       objectFit: "contain",
                     }}
                   />
+
                 </div>
               )}
             </>
@@ -581,7 +576,7 @@ function Chat({ roomId, username, onReadReaset }) {
             onDelete={handleDelete}
           />
         ))}
-        <div ref={bottomRef} style={{ height: "0", margin: 0, padding: 0 }} />
+        <div ref={bottomRef} id="bottom-ref" style={{ height: "0", margin: 0, padding: 0 }} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
