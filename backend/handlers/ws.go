@@ -14,13 +14,14 @@ import (
 
 // WebSocketで使用する構造体
 type WSMessage struct {
-	Type      string `json:"type"` //"message" or "read"
-	RoomID    int    `json:"room_id"`
-	Text      string `json:"text"`
-	Image     string `json:"image,omitempty"`
-	Sender    int    `json:"sender_id"`
-	Username  string `json:"username"`
-	MessageID int    `json:"message_id,omitempty"` // 既読通知用
+	Type       string `json:"type"` //"message" or "read"
+	RoomID     int    `json:"room_id"`
+	Text       string `json:"text"`
+	Image      string `json:"image,omitempty"`
+	Sender     int    `json:"sender_id"`
+	Username   string `json:"username"`
+	MessageID  int    `json:"message_id,omitempty"` // 既読通知用
+	HardDelete bool   `json:"hard_delete,omitempty"`
 }
 
 type Client struct {
@@ -123,12 +124,15 @@ func WebSocketHandler(db *pgxpool.Pool) http.HandlerFunc {
 			case "delete":
 				log.Printf("削除通知: message_id=%d", msg.MessageID)
 
+				hardDelete := msg.Text == "hard"
+
 				mu.Lock()
 				for _, c := range roomClients[msg.RoomID] {
 					_ = c.Conn.WriteJSON(map[string]interface{}{
-						"type":       "delete",
-						"room_id":    msg.RoomID,
-						"message_id": msg.MessageID,
+						"type":        "delete",
+						"room_id":     msg.RoomID,
+						"message_id":  msg.MessageID,
+						"hard_delete": hardDelete,
 					})
 				}
 				mu.Unlock()

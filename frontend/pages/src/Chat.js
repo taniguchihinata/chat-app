@@ -183,6 +183,7 @@ function Chat({ roomId, username, onReadReaset }) {
         type: "delete",
         room_id: parseInt(roomId),
         message_id: messageId,
+        text: "hard"
       });
 
       setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
@@ -215,6 +216,7 @@ function Chat({ roomId, username, onReadReaset }) {
           type: "delete",
           room_id: parseInt(roomId),
           message_id: messageId,
+          text: "hard,"
         });
 
         setMessages((prev) => prev.filter((msg) => msg.id !== messageId));
@@ -387,6 +389,7 @@ function Chat({ roomId, username, onReadReaset }) {
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
+      console.log("受信メッセージ:", msg);
       msg.id = msg.id ?? msg.message_id;
 
       if (msg.type === "read"){
@@ -414,9 +417,11 @@ function Chat({ roomId, username, onReadReaset }) {
       }
 
       if (msg.type === "delete") {
-        setMessages((prev) =>
-          prev.map((m) => m.id !== msg.message_id ? { ...m, deleted: true} : m)
-        );
+        if (msg.hard_delete) {
+          setMessages((prev) => prev.filter((m) => m.id !== msg.message_id));
+        } else {
+          setMessages((prev) => prev.map((m) => m.id === msg.message_id ? { ...m, deleted: true } : m) )
+        };
         return;
       }
 
@@ -477,6 +482,7 @@ function Chat({ roomId, username, onReadReaset }) {
   const prevMessageCountRef = useRef(0);
 
   useEffect(() => {
+
     if (messages.length > prevMessageCountRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
     }
