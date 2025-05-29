@@ -1,6 +1,8 @@
+//チャットルームのフロントエンド
 import React, { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useLocation } from "react-router-dom";
+
 
 function MessageItem({ 
   msg,
@@ -13,7 +15,8 @@ function MessageItem({
   readersByMessageId,
   scrollRefs,
   onUndo,
-  onDelete
+  onDelete,
+  isAtBottom
 }) {
   const isMine = msg.username === username;
   const localRef = useRef(null);
@@ -27,7 +30,7 @@ function MessageItem({
   }, [msg.id, scrollRefs]);
 
   useEffect(() => {
-    if (!msg.id) return;
+    if (!msg.id || isMine || readStatus[msg.id]) return;
 
     if (inView && !isMine && !readStatus[msg.id]) {
       const token = localStorage.getItem("token");
@@ -92,6 +95,7 @@ function MessageItem({
                     src={`http://localhost:8081${msg.image}`}
                     alt="添付画像"
                     onLoad={() => {
+                      if (!isAtBottom) return;
                       const el = document.getElementById("bottom-ref");
                       el?.scrollIntoView({ behavior: "auto", block: "end" });
                     }}
