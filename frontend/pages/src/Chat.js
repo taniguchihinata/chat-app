@@ -16,7 +16,8 @@ function MessageItem({
   scrollRefs,
   onUndo,
   onDelete,
-  isAtBottom
+  isAtBottom,
+  readRequestedRef
 }) {
   const isMine = msg.username === username;
   const localRef = useRef(null);
@@ -30,9 +31,14 @@ function MessageItem({
   }, [msg.id, scrollRefs]);
 
   useEffect(() => {
-    if (!msg.id || isMine || readStatus[msg.id]) return;
+    if (!msg.id || isMine) return;
 
-    if (inView && !isMine && !readStatus[msg.id]) {
+    if (readStatus[msg.id] || readRequestedRef.current.has(msg.id)) return;
+
+    //if (readRequestedRef.current.has(msg.id)) return;
+
+    if (inView) {
+      readRequestedRef.current.add(msg.id);
       const token = localStorage.getItem("token");
 
       fetch("http://localhost:8081/read", {
@@ -56,11 +62,14 @@ function MessageItem({
         [msg.id]: true,
       }));
     }
-  }, [inView, isMine, msg.id, roomId, username, sendWhenReady, readStatus, setReadStatus]);
+  }, [inView, isMine, msg.id, roomId, username, sendWhenReady, readStatus, setReadStatus, readRequestedRef]);
 
   return (
     <div
-      ref={inViewRef}
+      ref={(el) => {
+        inViewRef(el);
+        localRef.current = el;
+      }}
       key={msg.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -176,6 +185,7 @@ function Chat({ roomId, username, onReadReaset }) {
   const searchParams = new URLSearchParams(location.search);
   const scrollToId = searchParams.get("scrollTo"); // 例: "123"
   const scrollRefs = useRef({});
+  const readRequestedRef = useRef(new Set());
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -488,7 +498,7 @@ function Chat({ roomId, username, onReadReaset }) {
     if (scrollToId && scrollRefs.current[scrollToId]) {
       setTimeout(() => {
         scrollRefs.current[scrollToId]?.scrollIntoView({
-          behavior: "smooth",
+          behavior: "auto",
           block: "center",
         });
       }, 100);
@@ -578,6 +588,7 @@ function Chat({ roomId, username, onReadReaset }) {
             scrollRefs={scrollRefs}
             onUndo={handleUndo}
             onDelete={handleDelete}
+            readRequestedRef={readRequestedRef}
           />
         ))}
         <div ref={bottomRef} id="bottom-ref" style={{ height: "0", margin: 0, padding: 0 }} />
