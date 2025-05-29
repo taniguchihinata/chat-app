@@ -93,7 +93,7 @@ function MessageItem({
                     alt="添付画像"
                     onLoad={() => {
                       const el = document.getElementById("bottom-ref");
-                      el?.scrollIntoView({ behavior: "smooth", block: "end" });
+                      el?.scrollIntoView({ behavior: "auto", block: "end" });
                     }}
                     style={{
                       width: msg.image.startsWith("/stamps/") ? "80px" : "auto",
